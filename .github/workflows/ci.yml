@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      - name: Tests
+        run: pytest -q
+
+      - name: Offline path must work with no network credentials
+        # The fixture path is the default, not a fallback. If this breaks, the
+        # daily automation cannot make progress in a sandbox without keys.
+        run: |
+          python -c "
+          from stockstalker.data import providers
+          df = providers.load('RELIANCE.NS')
+          assert not df.empty, 'fixture load returned nothing'
+          assert list(df.columns) == ['open', 'high', 'low', 'close', 'volume']
+          print(f'offline load ok: {df.shape[0]} rows')
+          "
