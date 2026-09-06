@@ -82,3 +82,34 @@ def test_macd_is_zero_for_a_flat_series():
     assert not live.empty
     assert (live["macd"] == 0.0).all()
     assert (live["histogram"] == 0.0).all()
+
+
+def test_rsi_matches_textbook_wilder_in_the_opening_window():
+    """The extremes (100/0/50) pass under any smoothing, so pin the early bars.
+
+    ewm(adjust=False) seeds from the first observation instead of the mean of
+    the first `period` deltas. It converges later, so only the opening window
+    catches the difference — and that window is where short histories live.
+    """
+    close = FixtureProvider().fetch("RELIANCE.NS")["close"]
+    period = 14
+
+    delta = close.diff()
+    gain, loss = delta.clip(lower=0), -delta.clip(upper=0)
+    avg_g = [float("nan")] * len(close)
+    avg_l = list(avg_g)
+    avg_g[period] = gain.iloc[1 : period + 1].mean()
+    avg_l[period] = loss.iloc[1 : period + 1].mean()
+    for i in range(period + 1, len(close)):
+        avg_g[i] = (avg_g[i - 1] * (period - 1) + gain.iloc[i]) / period
+        avg_l[i] = (avg_l[i - 1] * (period - 1) + loss.iloc[i]) / period
+    expected = pd.Series(
+        [100 - 100 / (1 + (a / b)) if b else (100 if a else 50) for a, b in zip(avg_g, avg_l)],
+        index=close.index,
+    )
+
+    got = rsi(close, period)
+    assert got.first_valid_index() == expected.first_valid_index()
+    pd.testing.assert_series_equal(
+        got.iloc[period : period + 40], expected.iloc[period : period + 40], atol=1e-9
+    )

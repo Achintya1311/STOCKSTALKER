@@ -7,32 +7,49 @@ synthetic series.
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 from .trend import ema
 
 
-def rsi(close: pd.Series, period: int = 14) -> pd.Series:
-    """Wilder's RSI. The first ``period`` points are NaN (Wilder smoothing needs a seed).
+def _wilder_smooth(values: pd.Series, period: int) -> pd.Series:
+    """Wilder's smoothing: simple-mean seed, then his recursion.
 
-    Uses Wilder's own smoothing (an EWM with ``alpha=1/period``), not a plain
-    rolling mean of gains/losses — that distinction is what most charting
-    platforms actually mean by "RSI" and a naive rolling-mean version does
-    not match them.
+    ``ewm(alpha=1/period, adjust=False)`` looks equivalent and is not — it
+    seeds from the first observation, where Wilder seeds from the mean of the
+    first ``period`` values. The two converge (identical by ~250 bars) but
+    disagree by up to ~7 RSI points early, which is the difference between
+    reading a name as deeply oversold and not oversold at all. That window is
+    exactly where a recently listed stock or a short history lands.
+    """
+    arr = values.to_numpy(dtype=float)
+    out = np.full(arr.shape, np.nan)
+    if arr.size > period:
+        out[period] = arr[1 : period + 1].mean()
+        for i in range(period + 1, arr.size):
+            out[i] = (out[i - 1] * (period - 1) + arr[i]) / period
+    return pd.Series(out, index=values.index)
+
+
+def rsi(close: pd.Series, period: int = 14) -> pd.Series:
+    """Wilder's RSI. The first ``period`` points are NaN (the seed needs them).
+
+    Matches the RSI charting platforms display, including in the opening
+    window — see :func:`_wilder_smooth` for why the obvious EWM one-liner does
+    not.
     """
     if period < 1:
         raise ValueError(f"period must be >= 1, got {period}")
     delta = close.diff()
-    gain = delta.clip(lower=0)
-    loss = -delta.clip(upper=0)
-    avg_gain = gain.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
-    avg_loss = loss.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
+    avg_gain = _wilder_smooth(delta.clip(lower=0), period)
+    avg_loss = _wilder_smooth(-delta.clip(upper=0), period)
     rs = avg_gain / avg_loss
     result = 100 - (100 / (1 + rs))
-    # Zero average gain and loss together means a flat window: no direction
-    # to report, and the division above leaves it NaN rather than 0/0's
-    # intended "neutral". Everywhere else (including all-gain, where rs is
-    # +inf) the formula already resolves to the right bound on its own.
+    # Zero average gain and loss together means a flat window: no direction to
+    # report, and the division leaves it NaN rather than the intended neutral.
+    # Elsewhere (including all-gain, where rs is +inf) the formula resolves to
+    # the right bound on its own.
     result[(avg_gain == 0) & (avg_loss == 0)] = 50.0
     return result
 
