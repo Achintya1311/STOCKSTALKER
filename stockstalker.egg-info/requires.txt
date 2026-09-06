@@ -1,9 +1,0 @@
-pandas
-numpy
-yfinance
-requests
-matplotlib
-rich
-
-[dev]
-pytest

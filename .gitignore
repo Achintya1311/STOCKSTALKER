@@ -8,3 +8,6 @@ venv/
 .cache/
 outputs/*
 !outputs/.gitkeep
+*.egg-info/
+build/
+dist/
