@@ -1,0 +1,5 @@
+# NSE tickers screened daily. One per line, yfinance suffix (.NS).
+# Kept small while the free-tier limits are being respected.
+RELIANCE.NS
+TATACHEM.NS
+CROMPTON.NS
