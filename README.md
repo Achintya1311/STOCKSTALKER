@@ -2,7 +2,7 @@
 
 Screens the NSE universe down to a shortlist worth researching properly, using trend, momentum, volume and liquidity signals. Command-line only: arguments in, ranked candidates and chart files out.
 
-**Status:** Last checkpoint 2026-09-06 · Next: Day 3 - SMA/EMA crossover signals as pure functions with unit tests
+**Status:** Last checkpoint 2026-09-06 · Next: Day 4 - signals/momentum.py (RSI, MACD) and signals/volume.py (OBV, volume z-score)
 
 ## What this is
 
@@ -49,6 +49,7 @@ Nothing yet.
 <!-- CHECKPOINTS:START -->
 | Date | Commit | What changed | Next |
 |------|--------|--------------|------|
+| 2026-09-06 | `5b4950c` | Day 3: SMA/EMA crossover trend signals (sma, ema, crossover_state, crossover_events, trend_score) as pure functions, unit tested against fixtures and synthetic series | Day 4 - signals/momentum.py (RSI, MACD) and signals/volume.py (OBV, volume z-score) |
 | 2026-09-06 | `3a014ec` | Days 1-2: scaffold, v1 output contract, offline fixtures, and the provider interface over fixtures/yfinance/Alpha Vantage | Day 3 - SMA/EMA crossover signals as pure functions with unit tests |
 <!-- CHECKPOINTS:END -->
 
