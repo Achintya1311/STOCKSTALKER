@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Achintya1311/STOCKSTALKER/schema/v1.json",
+  "title": "Stock Stalker screen output, v1",
+  "description": "The contract satellite repos read and extend. Satellites add keys under their own namespace rather than reshaping what exists. Breaking changes get a new version file, never an edit to this one.",
+  "type": "object",
+  "required": ["schema", "generated", "universe", "candidates"],
+  "properties": {
+    "schema": {"const": "v1"},
+    "generated": {"type": "string", "format": "date"},
+    "universe": {"type": "string", "description": "which ticker universe was screened, e.g. NSE or a fixture set"},
+    "source": {"enum": ["fixtures", "yfinance", "alphavantage"], "description": "where the bars came from, so a reader can tell offline runs from live ones"},
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ticker", "rank", "score"],
+        "properties": {
+          "ticker": {"type": "string"},
+          "rank": {"type": "integer", "minimum": 1},
+          "score": {"type": "number", "minimum": 0, "maximum": 1},
+          "signals": {
+            "type": "object",
+            "properties": {
+              "trend": {"type": "number"},
+              "momentum": {"type": "number"},
+              "volume": {"type": "number"}
+            }
+          },
+          "liquidity": {
+            "type": "object",
+            "properties": {
+              "adv_20d": {"type": "number", "description": "20-day average daily volume"},
+              "turnover_20d": {"type": "number", "description": "20-day average traded value"}
+            }
+          },
+          "factor": {"type": "object", "description": "written by fama-french-factor-model (v0.2)"},
+          "risk": {"type": "object", "description": "written by monte-carlo-risk-lab (v0.3)"},
+          "sizing": {"type": "object", "description": "written by markowitz-portfolio-optimizer (v0.4)"},
+          "sentiment": {"type": "object", "description": "written by headline-sentiment-vs-price (v0.5)"},
+          "vol": {"type": "object", "description": "written by implied-vol-surface (v0.6)"},
+          "valuation": {"type": "object", "description": "written by reverse-dcf-engine (v0.7)"},
+          "fundamentals": {"type": "object", "description": "written by three-statement-model (v0.8)"}
+        }
+      }
+    }
+  }
+}
