@@ -2,7 +2,7 @@
 
 Screens the NSE universe down to a shortlist worth researching properly, using trend, momentum, volume and liquidity signals. Command-line only: arguments in, ranked candidates and chart files out.
 
-**Status:** Not started · Next: Day 2 - Alpha Vantage and yfinance behind one provider interface, with disk cache and fixture fallback
+**Status:** Last checkpoint 2026-09-06 · Next: Day 3 - SMA/EMA crossover signals as pure functions with unit tests
 
 ## What this is
 
@@ -49,6 +49,7 @@ Nothing yet.
 <!-- CHECKPOINTS:START -->
 | Date | Commit | What changed | Next |
 |------|--------|--------------|------|
+| 2026-09-06 | `3a014ec` | Days 1-2: scaffold, v1 output contract, offline fixtures, and the provider interface over fixtures/yfinance/Alpha Vantage | Day 3 - SMA/EMA crossover signals as pure functions with unit tests |
 <!-- CHECKPOINTS:END -->
 
 ## Limitations and what would make me wrong
