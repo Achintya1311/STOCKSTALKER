@@ -36,7 +36,8 @@ jobs:
           git config user.email "67464985+Achintya1311@users.noreply.github.com"
           git add data/snapshots
           if git diff --cached --quiet; then
-            echo "no new bars (holiday, or the feed returned nothing) - nothing to commit"
+            echo "snapshot unchanged - the fetch ran, the rows already match what is committed."
+            echo "(A genuinely empty fetch is reported by snapshot.py above, not here.)"
             exit 0
           fi
           git commit -m "data: EOD snapshot $(date -u +%Y-%m-%d)"
