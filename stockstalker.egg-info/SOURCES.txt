@@ -1,0 +1,16 @@
+README.md
+pyproject.toml
+stockstalker/__init__.py
+stockstalker.egg-info/PKG-INFO
+stockstalker.egg-info/SOURCES.txt
+stockstalker.egg-info/dependency_links.txt
+stockstalker.egg-info/requires.txt
+stockstalker.egg-info/top_level.txt
+stockstalker/data/__init__.py
+stockstalker/data/providers.py
+stockstalker/signals/__init__.py
+stockstalker/signals/trend.py
+stockstalker/viz/__init__.py
+tests/test_package.py
+tests/test_providers.py
+tests/test_trend.py
