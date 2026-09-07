@@ -2,7 +2,7 @@
 
 Screens the NSE universe down to a shortlist worth researching properly, using trend, momentum, volume and liquidity signals. Command-line only: arguments in, ranked candidates and chart files out.
 
-**Status:** Last checkpoint 2026-09-06 · Next: Day 6 - screener.py: YAML-configured rules combining trend/momentum/volume signals into a ranked candidate list (outputs/screen_<date>.csv + markdown report)
+**Status:** Last checkpoint 2026-09-07 · Next: Day 7 - sanity check the screen against buy-and-hold on the fixture window, report results straight including if it loses
 
 ## What this is
 
@@ -49,6 +49,7 @@ Nothing yet.
 <!-- CHECKPOINTS:START -->
 | Date | Commit | What changed | Next |
 |------|--------|--------------|------|
+| 2026-09-07 | `d9c675a` | Day 6: screener.py blends trend/momentum/volume signals (YAML-configured weights in config/screen.yaml) into a ranked candidate list. Added momentum_score and volume_score alongside the existing trend_score, each a bounded [-1,1] snapshot. Writes outputs/screen_<date>.json (schema/v1.json contract), .csv, and .md, plus a terminal summary. 34 new tests, 102 total pass. Ran python -m stockstalker.screener --offline by hand against the 3 fixtures to confirm the CLI actually produces the files. | Day 7 - sanity check the screen against buy-and-hold on the fixture window, report results straight including if it loses |
 | 2026-09-06 | `7e7f9d9` | Day 5: viz/liquidity.py volume-at-price heatmap - bins each day's close into equal-width price buckets, sums volume per bucket (conserves total), flags bins >=1.5x mean volume as high-activity zones, renders a single-hue horizontal bar heatmap with zones outlined in red to outputs/heatmap_<ticker>.png. Ran against all 3 fixtures and eyeballed the PNGs. 14 new tests, 68 total pass. | Day 6 - screener.py: YAML-configured rules combining trend/momentum/volume signals into a ranked candidate list (outputs/screen_<date>.csv + markdown report) |
 | 2026-09-06 | `749054a` | Day 4: RSI/MACD momentum signals and OBV/volume z-score volume signals (momentum.py, volume.py) as pure functions, unit tested against fixtures and synthetic edge cases (flat, monotonic, spike series) | Day 5 - viz/liquidity.py: volume-at-price heatmap marking high-activity zones |
 | 2026-09-06 | `5b4950c` | Day 3: SMA/EMA crossover trend signals (sma, ema, crossover_state, crossover_events, trend_score) as pure functions, unit tested against fixtures and synthetic series | Day 4 - signals/momentum.py (RSI, MACD) and signals/volume.py (OBV, volume z-score) |
