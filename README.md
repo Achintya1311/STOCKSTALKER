@@ -42,7 +42,28 @@ Offline against fixtures is the default path, not the fallback. Live fetching is
 
 ## Findings
 
-Nothing yet.
+### Day 7 — screen score vs. buy-and-hold (walk-forward, fixtures only)
+
+`python -m stockstalker.backtest --offline` tests whether yesterday's blended
+screen score (>= 0.5, i.e. a non-negative trend/momentum/volume blend)
+predicts today capturing a positive return — long when the prior close's
+score clears the bar, flat otherwise, no shorting, no costs — over the
+~450 tradeable days once each ticker clears its 50-bar burn-in.
+
+| Ticker | Strategy | Buy & hold | Edge |
+|---|---|---|---|
+| RELIANCE.NS | -1.85% | +5.19% | -7.04% |
+| TATACHEM.NS | +4.62% | -39.34% | +43.96% |
+| CROMPTON.NS | -35.32% | -36.05% | +0.73% |
+
+2 of 3 names beat buy-and-hold, but only by losing less during a steep
+decline: the strategy still lost money outright on TATACHEM and CROMPTON,
+and lost to buy-and-hold on RELIANCE, the one name that actually went up.
+Mean strategy return -10.85% vs. mean buy-and-hold -23.40%. Read this as
+"doesn't obviously do worse than being long," not as validated edge —
+three tickers over one overlapping two-year window is not a sample that
+supports a stronger claim either way. Full numbers in
+`outputs/backtest_<date>.{json,csv,md}`.
 
 ## Checkpoint log
 
@@ -62,7 +83,7 @@ Nothing yet.
 - Technical signals describe how a price has behaved, not what a business is worth. Nothing here is a valuation, and nothing here is a recommendation.
 - The Alpha Vantage free tier is 25 requests/day. Live runs across a real universe are rate-limited by design, which is why the fixture path exists.
 - Any backtest in this repo is in-sample unless the README says otherwise in that specific section.
-- The screener's signal weights (`config/screen.yaml`) and each signal's internal blend (e.g. RSI/MACD 50/50 inside momentum) are hand-picked, not fit or optimized against anything. There is no evidence yet that this particular ranking beats a simpler one — Day 7 checks the screen against buy-and-hold on the fixture window and will report it straight either way.
+- The screener's signal weights (`config/screen.yaml`) and each signal's internal blend (e.g. RSI/MACD 50/50 inside momentum) are hand-picked, not fit or optimized against anything. Day 7's walk-forward backtest against buy-and-hold (see Findings) found no clear edge — 2 of 3 tickers beat buy-and-hold, but only by losing less, and the strategy still lost to buy-and-hold on the one name that rose. Any future re-tuning of these weights against this same fixture window would be in-sample.
 
 ## Where this sits
 
