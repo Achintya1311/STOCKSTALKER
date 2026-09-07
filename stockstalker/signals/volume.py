@@ -36,3 +36,30 @@ def volume_zscore(volume: pd.Series, window: int = 20) -> pd.Series:
     z = (volume - rolling_mean) / rolling_std
     z[rolling_std == 0] = 0.0
     return z
+
+
+def volume_score(close: pd.Series, volume: pd.Series, z_window: int = 20, obv_window: int = 20) -> float:
+    """A single volume score in [-1, 1] from the latest volume z-score and OBV trend.
+
+    Two components, averaged: today's volume z-score (a spike or drought,
+    divided by 3 so a +-3 sigma move saturates the range), and OBV's net
+    change over ``obv_window`` bars divided by the volume traded over that
+    same window. The second component is bounded in [-1, 1] on its own —
+    each day's OBV contribution is at most that day's volume — so the clip
+    only guards the edge case where ``obv_window`` exceeds the series
+    length. This is a snapshot of the most recent bar, not a backtest
+    signal — it feeds the ``signals.volume`` field of the v1 screen
+    contract.
+    """
+    latest_z = volume_zscore(volume, z_window).iloc[-1]
+    z_component = 0.0 if pd.isna(latest_z) else float(np.clip(latest_z / 3, -1.0, 1.0))
+
+    obv_series = obv(close, volume)
+    if len(obv_series) > obv_window:
+        change = obv_series.iloc[-1] - obv_series.iloc[-obv_window - 1]
+        traded = volume.iloc[-obv_window:].sum()
+        obv_component = 0.0 if traded == 0 else float(np.clip(change / traded, -1.0, 1.0))
+    else:
+        obv_component = 0.0
+
+    return float(np.clip(0.5 * z_component + 0.5 * obv_component, -1.0, 1.0))

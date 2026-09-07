@@ -67,3 +67,31 @@ def macd(close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> p
     signal_line = ema(macd_line, signal)
     histogram = macd_line - signal_line
     return pd.DataFrame({"macd": macd_line, "signal": signal_line, "histogram": histogram})
+
+
+def momentum_score(
+    close: pd.Series,
+    rsi_period: int = 14,
+    macd_fast: int = 12,
+    macd_slow: int = 26,
+    macd_signal: int = 9,
+) -> float:
+    """A single momentum score in [-1, 1] from the latest RSI and MACD histogram.
+
+    Two components, averaged: RSI re-centred on 50 and scaled to +-1 (50 is
+    "no momentum" either way, by construction), and the MACD histogram as a
+    percentage of price, clipped at +-1. This is a snapshot of the most
+    recent bar, not a backtest signal — it feeds the ``signals.momentum``
+    field of the v1 screen contract.
+    """
+    latest_rsi = rsi(close, rsi_period).iloc[-1]
+    rsi_component = 0.0 if pd.isna(latest_rsi) else float(np.clip((latest_rsi - 50) / 50, -1.0, 1.0))
+
+    histogram = macd(close, macd_fast, macd_slow, macd_signal)["histogram"].iloc[-1]
+    latest_close = close.iloc[-1]
+    if pd.isna(histogram) or latest_close == 0:
+        macd_component = 0.0
+    else:
+        macd_component = float(np.clip((histogram / latest_close) * 100, -1.0, 1.0))
+
+    return float(np.clip(0.5 * rsi_component + 0.5 * macd_component, -1.0, 1.0))

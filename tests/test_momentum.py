@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from stockstalker.data.providers import FixtureProvider
-from stockstalker.signals.momentum import macd, rsi
+from stockstalker.signals.momentum import macd, momentum_score, rsi
 
 
 @pytest.fixture
@@ -113,3 +113,34 @@ def test_rsi_matches_textbook_wilder_in_the_opening_window():
     pd.testing.assert_series_equal(
         got.iloc[period : period + 40], expected.iloc[period : period + 40], atol=1e-9
     )
+
+
+def test_momentum_score_is_bounded_and_finite(reliance):
+    score = momentum_score(reliance["close"])
+    assert isinstance(score, float)
+    assert -1.0 <= score <= 1.0
+    assert np.isfinite(score)
+
+
+def test_momentum_score_positive_for_a_strictly_rising_series():
+    idx = pd.date_range("2026-01-01", periods=60)
+    close = pd.Series(np.linspace(100, 200, 60), index=idx)
+    assert momentum_score(close) > 0
+
+
+def test_momentum_score_negative_for_a_strictly_falling_series():
+    idx = pd.date_range("2026-01-01", periods=60)
+    close = pd.Series(np.linspace(200, 100, 60), index=idx)
+    assert momentum_score(close) < 0
+
+
+def test_momentum_score_zero_for_a_flat_series():
+    idx = pd.date_range("2026-01-01", periods=60)
+    close = pd.Series([100.0] * 60, index=idx)
+    assert momentum_score(close) == 0.0
+
+
+def test_momentum_score_too_short_for_either_indicator_is_zero():
+    idx = pd.date_range("2026-01-01", periods=5)
+    close = pd.Series([100.0, 101.0, 99.0, 102.0, 98.0], index=idx)
+    assert momentum_score(close) == 0.0

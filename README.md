@@ -61,6 +61,7 @@ Nothing yet.
 - Technical signals describe how a price has behaved, not what a business is worth. Nothing here is a valuation, and nothing here is a recommendation.
 - The Alpha Vantage free tier is 25 requests/day. Live runs across a real universe are rate-limited by design, which is why the fixture path exists.
 - Any backtest in this repo is in-sample unless the README says otherwise in that specific section.
+- The screener's signal weights (`config/screen.yaml`) and each signal's internal blend (e.g. RSI/MACD 50/50 inside momentum) are hand-picked, not fit or optimized against anything. There is no evidence yet that this particular ranking beats a simpler one — Day 7 checks the screen against buy-and-hold on the fixture window and will report it straight either way.
 
 ## Where this sits
 
