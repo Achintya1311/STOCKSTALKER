@@ -40,6 +40,27 @@ pytest
 
 Offline against fixtures is the default path, not the fallback. Live fetching is opt-in via `--live` and needs a key in `.env` (see `.env.example`).
 
+## Pipeline audit
+
+```bash
+python -m stockstalker.audit --offline
+```
+
+Checks that every indicator feeding the screen and the backtest is causal —
+its value for bar *i* never changes when bars after *i* are truncated out
+of the frame. Concretely: computes each of `sma`, `ema`, `rsi`,
+`macd.histogram`, `obv` and `volume_zscore` on the full fixture series and
+again on the series cut off at a sample of bars, and fails if the two ever
+disagree. `tests/test_audit.py` includes two negative controls (a centred
+rolling mean, a `shift(-1)`) that the checker must flag, so a pass means
+the check actually ran, not that it is vacuous. Runs in CI on every push.
+
+This is a structural check for look-ahead bias, not a statistical
+endorsement of the strategy — it cannot tell you whether the screen's
+thresholds are any good, only that the numbers behind them were computed
+without seeing the future. See Findings and Limitations for that half of
+the picture.
+
 ## Findings
 
 ### Day 7 — screen score vs. buy-and-hold (walk-forward, fixtures only)
@@ -86,6 +107,7 @@ supports a stronger claim either way. Full numbers in
 - The Alpha Vantage free tier is 25 requests/day. Live runs across a real universe are rate-limited by design, which is why the fixture path exists.
 - Any backtest in this repo is in-sample unless the README says otherwise in that specific section.
 - The screener's signal weights (`config/screen.yaml`) and each signal's internal blend (e.g. RSI/MACD 50/50 inside momentum) are hand-picked, not fit or optimized against anything. Day 7's walk-forward backtest against buy-and-hold (see Findings) found no clear edge — 2 of 3 tickers beat buy-and-hold, but only by losing less, and the strategy still lost to buy-and-hold on the one name that rose. Any future re-tuning of these weights against this same fixture window would be in-sample.
+- The pipeline audit (`python -m stockstalker.audit`) only proves the indicators are causal — no future data leaks into a past bar's value. It says nothing about whether the screen's thresholds, weights, or the backtest's rule are any good; that question is still open per the two points above.
 
 ## Where this sits
 
