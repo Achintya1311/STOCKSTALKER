@@ -1,0 +1,766 @@
+{
+  "runs": [
+    {
+      "date": "2026-09-10",
+      "commit": "59ac4e2",
+      "notes": "Baseline + first classification/multi-layer-filtering/live-provider-contract pass: 6 engineered OHLCV regimes verifying trend/momentum/volume classify correctly, config-weight responsiveness, end-to-end multi-layer score+liquidity filtering with per-exclusion-reason checks, and a real (sandbox-blocked) live-network contract test.",
+      "totals": {
+        "passed": 148,
+        "failed": 0,
+        "skipped": 1,
+        "total": 149
+      },
+      "tests": {
+        "tests.test_audit::test_real_sma_is_causal": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_audit::test_real_rsi_is_causal": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_audit::test_real_obv_is_causal": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_audit::test_centered_rolling_mean_is_flagged": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_audit::test_shift_negative_is_flagged": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_audit::test_run_audit_clean_on_real_universe": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_audit::test_run_audit_reports_missing_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_burn_in_period_takes_the_slowest_indicator": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_walk_forward_scores_are_nan_inside_burn_in_and_bounded_after": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_walk_forward_score_matches_a_full_screen_on_the_same_slice": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_long_flat_returns_are_zero_when_score_never_clears_threshold": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_long_flat_returns_capture_the_next_bar_after_a_qualifying_score": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_cumulative_return_compounds": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_buy_and_hold_return_matches_manual_ratio": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_buy_and_hold_return_is_zero_for_a_too_short_window": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_backtest_ticker_shape": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_backtest_ticker_raises_when_history_is_too_short": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_run_backtest_records_a_fetch_error_without_failing_the_run": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_run_backtest_summary_matches_results": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_write_json_round_trips_the_report": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_write_csv_has_one_row_per_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_write_markdown_reports_beats_and_caveats": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_write_markdown_handles_no_results": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_main_runs_offline_against_the_real_fixtures_and_writes_all_three_files": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_main_rejects_live_and_offline_together": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_main_empty_universe_is_a_clean_failure": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_sustained_uptrend_with_rising_volume_classifies_bullish_on_every_factor": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_sustained_downtrend_with_falling_volume_classifies_bearish_on_every_factor": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_zero_drift_zigzag_classifies_as_genuinely_neutral": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_uptrend_on_fading_volume_is_bullish_but_less_than_confirmed_uptrend": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_trend_score_is_a_graded_response_not_a_step_function": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_changing_weights_flips_which_of_two_opposed_candidates_ranks_first": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_combined_score_and_liquidity_gates_keep_only_the_one_ticker_that_clears_both": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_each_dropped_ticker_was_excluded_for_its_own_documented_reason": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_liquidity_gate_boundary_is_inclusive": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_tightening_the_score_gate_monotonically_shrinks_the_survivor_set": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_volume_at_price_rejects_non_positive_bins": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_volume_at_price_rejects_empty_frame": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_volume_at_price_has_one_row_per_bin": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_volume_at_price_conserves_total_volume": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_volume_at_price_bins_span_the_close_range": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_volume_at_price_flat_price_series_is_one_degenerate_bin": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_volume_at_price_puts_each_days_volume_in_its_own_bin": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_volume_at_price_monotonic_series_bins_are_ascending_in_price": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_high_activity_zones_rejects_non_positive_threshold": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_high_activity_zones_empty_when_no_volume": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_high_activity_zones_flags_a_spike_bin": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_high_activity_zones_flags_nothing_when_volume_is_uniform": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_plot_liquidity_heatmap_writes_a_png": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_plot_liquidity_heatmap_runs_with_no_high_activity_zones": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_provider_smoke::test_yfinance_provider_gives_real_live_values_or_fails_cleanly": {
+          "outcome": "skipped",
+          "detail": "no live network reachable in this sandbox (no rows returned for RELIANCE.NS); this is the offline/zero-spend default working as intended, not a scanner bug. Re-run in an environment with outbound network to actually exercise the live path."
+        },
+        "tests.test_live_provider_smoke::test_yfinance_provider_never_leaks_a_raw_exception": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_rsi_rejects_non_positive_period": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_rsi_leading_values_are_nan_then_bounded": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_rsi_is_100_for_a_strictly_rising_series": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_rsi_is_0_for_a_strictly_falling_series": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_rsi_is_50_for_a_flat_series": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_macd_rejects_fast_not_less_than_slow": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_macd_shape_and_columns": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_macd_histogram_equals_macd_minus_signal": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_macd_line_matches_ema_difference": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_macd_is_zero_for_a_flat_series": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_rsi_matches_textbook_wilder_in_the_opening_window": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_momentum_score_is_bounded_and_finite": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_momentum_score_positive_for_a_strictly_rising_series": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_momentum_score_negative_for_a_strictly_falling_series": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_momentum_score_zero_for_a_flat_series": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_momentum_score_too_short_for_either_indicator_is_zero": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_package::test_version_is_set": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_package::test_schema_is_valid_json_and_versioned": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_package::test_fixtures_are_present_and_non_empty": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_fixture_provider_lists_committed_tickers": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_fixture_fetch_returns_the_shared_shape": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_unknown_fixture_names_the_alternatives": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_missing_column_fails_loudly": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_empty_frame_is_an_error_not_an_empty_result": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_multiindex_columns_are_flattened": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers.TestAlphaVantageNotices::test_quota_message_raises_rate_limited": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers.TestAlphaVantageNotices::test_key_message_raises_bad_credentials": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers.TestAlphaVantageNotices::test_error_message_field_is_credentials": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers.TestAlphaVantageNotices::test_clean_payload_passes": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_missing_key_points_at_the_offline_path": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_load_defaults_to_fixtures": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_get_provider_rejects_unknown_names": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_render_screen_table_lists_every_candidate": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_render_screen_table_handles_no_candidates": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_render_backtest_table_lists_every_result": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_write_charts_draws_one_heatmap_per_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_write_charts_records_a_bad_ticker_instead_of_raising": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_runs_offline_and_writes_charts": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_no_charts_skips_chart_files": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_rejects_live_and_offline_together": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_empty_universe_is_a_clean_failure": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_load_config_reads_the_committed_rules_file": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_load_config_fills_missing_sections_from_defaults": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_load_config_fills_missing_keys_within_a_present_section": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_load_universe_skips_blanks_and_comments": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_load_universe_missing_file_is_empty": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_compute_signals_bounded": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_blended_score_all_positive_signals_is_one": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_blended_score_all_negative_signals_is_zero": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_blended_score_neutral_signals_is_a_half": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_blended_score_weights_need_not_sum_to_one": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_blended_score_falls_back_to_equal_weight_when_weights_are_all_zero": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_liquidity_metrics_matches_manual_mean": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_apply_filters_drops_below_min_adv": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_apply_filters_drops_below_min_score": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_rank_orders_by_score_descending_and_stamps_rank": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_build_screen_ranks_the_real_universe": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_build_screen_records_a_fetch_error_without_failing_the_run": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_write_json_round_trips_the_screen": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_write_csv_has_one_row_per_candidate": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_write_markdown_reports_errors_and_empty_screens": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_main_runs_offline_against_the_real_fixtures_and_writes_all_three_files": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_main_rejects_live_and_offline_together": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_main_empty_universe_is_a_clean_failure": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_sma_matches_pandas_rolling_mean": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_sma_window_one_equals_close": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_sma_rejects_non_positive_window": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_sma_leading_values_are_nan_then_defined": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_ema_matches_pandas_ewm": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_ema_rejects_non_positive_span": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_crossover_state_signs_and_undefined_rows": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_crossover_events_fire_only_on_the_flip_bar": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_crossover_events_needs_two_defined_bars": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_sma_crossover_rejects_fast_not_less_than_slow": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_ema_crossover_rejects_fast_not_less_than_slow": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_sma_crossover_detects_a_known_golden_cross": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_sma_crossover_detects_a_known_death_cross": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_trend_score_is_bounded_and_finite": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_trend_score_ema_also_bounded": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_trend_score_rejects_unknown_method": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_trend_score_positive_when_price_ramping_up": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_trend_score_negative_when_price_ramping_down": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_trend_score_flat_price_is_zero": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_obv_starts_at_zero_with_no_prior_close": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_obv_length_matches_input": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_obv_adds_volume_on_up_days_and_subtracts_on_down_days": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_zscore_rejects_small_window": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_zscore_leading_values_are_nan_then_defined": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_zscore_is_zero_for_constant_volume": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_zscore_flags_a_spike": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_zscore_matches_manual_calculation": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_score_is_bounded_and_finite": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_score_positive_when_price_rises_on_uniform_volume": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_score_negative_when_price_falls_on_uniform_volume": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_score_positive_for_a_volume_spike_on_flat_price": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_score_zero_for_flat_price_and_flat_volume": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_score_ignores_obv_component_when_window_exceeds_series_length": {
+          "outcome": "passed",
+          "detail": null
+        }
+      },
+      "new_test_ids": [
+        "tests.test_audit::test_centered_rolling_mean_is_flagged",
+        "tests.test_audit::test_real_obv_is_causal",
+        "tests.test_audit::test_real_rsi_is_causal",
+        "tests.test_audit::test_real_sma_is_causal",
+        "tests.test_audit::test_run_audit_clean_on_real_universe",
+        "tests.test_audit::test_run_audit_reports_missing_ticker",
+        "tests.test_audit::test_shift_negative_is_flagged",
+        "tests.test_backtest::test_backtest_ticker_raises_when_history_is_too_short",
+        "tests.test_backtest::test_backtest_ticker_shape",
+        "tests.test_backtest::test_burn_in_period_takes_the_slowest_indicator",
+        "tests.test_backtest::test_buy_and_hold_return_is_zero_for_a_too_short_window",
+        "tests.test_backtest::test_buy_and_hold_return_matches_manual_ratio",
+        "tests.test_backtest::test_cumulative_return_compounds",
+        "tests.test_backtest::test_long_flat_returns_are_zero_when_score_never_clears_threshold",
+        "tests.test_backtest::test_long_flat_returns_capture_the_next_bar_after_a_qualifying_score",
+        "tests.test_backtest::test_main_empty_universe_is_a_clean_failure",
+        "tests.test_backtest::test_main_rejects_live_and_offline_together",
+        "tests.test_backtest::test_main_runs_offline_against_the_real_fixtures_and_writes_all_three_files",
+        "tests.test_backtest::test_run_backtest_records_a_fetch_error_without_failing_the_run",
+        "tests.test_backtest::test_run_backtest_summary_matches_results",
+        "tests.test_backtest::test_walk_forward_score_matches_a_full_screen_on_the_same_slice",
+        "tests.test_backtest::test_walk_forward_scores_are_nan_inside_burn_in_and_bounded_after",
+        "tests.test_backtest::test_write_csv_has_one_row_per_ticker",
+        "tests.test_backtest::test_write_json_round_trips_the_report",
+        "tests.test_backtest::test_write_markdown_handles_no_results",
+        "tests.test_backtest::test_write_markdown_reports_beats_and_caveats",
+        "tests.test_classification_and_filtering::test_changing_weights_flips_which_of_two_opposed_candidates_ranks_first",
+        "tests.test_classification_and_filtering::test_combined_score_and_liquidity_gates_keep_only_the_one_ticker_that_clears_both",
+        "tests.test_classification_and_filtering::test_each_dropped_ticker_was_excluded_for_its_own_documented_reason",
+        "tests.test_classification_and_filtering::test_liquidity_gate_boundary_is_inclusive",
+        "tests.test_classification_and_filtering::test_sustained_downtrend_with_falling_volume_classifies_bearish_on_every_factor",
+        "tests.test_classification_and_filtering::test_sustained_uptrend_with_rising_volume_classifies_bullish_on_every_factor",
+        "tests.test_classification_and_filtering::test_tightening_the_score_gate_monotonically_shrinks_the_survivor_set",
+        "tests.test_classification_and_filtering::test_trend_score_is_a_graded_response_not_a_step_function",
+        "tests.test_classification_and_filtering::test_uptrend_on_fading_volume_is_bullish_but_less_than_confirmed_uptrend",
+        "tests.test_classification_and_filtering::test_zero_drift_zigzag_classifies_as_genuinely_neutral",
+        "tests.test_liquidity::test_high_activity_zones_empty_when_no_volume",
+        "tests.test_liquidity::test_high_activity_zones_flags_a_spike_bin",
+        "tests.test_liquidity::test_high_activity_zones_flags_nothing_when_volume_is_uniform",
+        "tests.test_liquidity::test_high_activity_zones_rejects_non_positive_threshold",
+        "tests.test_liquidity::test_plot_liquidity_heatmap_runs_with_no_high_activity_zones",
+        "tests.test_liquidity::test_plot_liquidity_heatmap_writes_a_png",
+        "tests.test_liquidity::test_volume_at_price_bins_span_the_close_range",
+        "tests.test_liquidity::test_volume_at_price_conserves_total_volume",
+        "tests.test_liquidity::test_volume_at_price_flat_price_series_is_one_degenerate_bin",
+        "tests.test_liquidity::test_volume_at_price_has_one_row_per_bin",
+        "tests.test_liquidity::test_volume_at_price_monotonic_series_bins_are_ascending_in_price",
+        "tests.test_liquidity::test_volume_at_price_puts_each_days_volume_in_its_own_bin",
+        "tests.test_liquidity::test_volume_at_price_rejects_empty_frame",
+        "tests.test_liquidity::test_volume_at_price_rejects_non_positive_bins",
+        "tests.test_live_provider_smoke::test_yfinance_provider_gives_real_live_values_or_fails_cleanly",
+        "tests.test_live_provider_smoke::test_yfinance_provider_never_leaks_a_raw_exception",
+        "tests.test_momentum::test_macd_histogram_equals_macd_minus_signal",
+        "tests.test_momentum::test_macd_is_zero_for_a_flat_series",
+        "tests.test_momentum::test_macd_line_matches_ema_difference",
+        "tests.test_momentum::test_macd_rejects_fast_not_less_than_slow",
+        "tests.test_momentum::test_macd_shape_and_columns",
+        "tests.test_momentum::test_momentum_score_is_bounded_and_finite",
+        "tests.test_momentum::test_momentum_score_negative_for_a_strictly_falling_series",
+        "tests.test_momentum::test_momentum_score_positive_for_a_strictly_rising_series",
+        "tests.test_momentum::test_momentum_score_too_short_for_either_indicator_is_zero",
+        "tests.test_momentum::test_momentum_score_zero_for_a_flat_series",
+        "tests.test_momentum::test_rsi_is_0_for_a_strictly_falling_series",
+        "tests.test_momentum::test_rsi_is_100_for_a_strictly_rising_series",
+        "tests.test_momentum::test_rsi_is_50_for_a_flat_series",
+        "tests.test_momentum::test_rsi_leading_values_are_nan_then_bounded",
+        "tests.test_momentum::test_rsi_matches_textbook_wilder_in_the_opening_window",
+        "tests.test_momentum::test_rsi_rejects_non_positive_period",
+        "tests.test_package::test_fixtures_are_present_and_non_empty",
+        "tests.test_package::test_schema_is_valid_json_and_versioned",
+        "tests.test_package::test_version_is_set",
+        "tests.test_providers.TestAlphaVantageNotices::test_clean_payload_passes",
+        "tests.test_providers.TestAlphaVantageNotices::test_error_message_field_is_credentials",
+        "tests.test_providers.TestAlphaVantageNotices::test_key_message_raises_bad_credentials",
+        "tests.test_providers.TestAlphaVantageNotices::test_quota_message_raises_rate_limited",
+        "tests.test_providers::test_empty_frame_is_an_error_not_an_empty_result",
+        "tests.test_providers::test_fixture_fetch_returns_the_shared_shape",
+        "tests.test_providers::test_fixture_provider_lists_committed_tickers",
+        "tests.test_providers::test_get_provider_rejects_unknown_names",
+        "tests.test_providers::test_load_defaults_to_fixtures",
+        "tests.test_providers::test_missing_column_fails_loudly",
+        "tests.test_providers::test_missing_key_points_at_the_offline_path",
+        "tests.test_providers::test_multiindex_columns_are_flattened",
+        "tests.test_providers::test_unknown_fixture_names_the_alternatives",
+        "tests.test_report::test_main_empty_universe_is_a_clean_failure",
+        "tests.test_report::test_main_no_charts_skips_chart_files",
+        "tests.test_report::test_main_rejects_live_and_offline_together",
+        "tests.test_report::test_main_runs_offline_and_writes_charts",
+        "tests.test_report::test_render_backtest_table_lists_every_result",
+        "tests.test_report::test_render_screen_table_handles_no_candidates",
+        "tests.test_report::test_render_screen_table_lists_every_candidate",
+        "tests.test_report::test_write_charts_draws_one_heatmap_per_ticker",
+        "tests.test_report::test_write_charts_records_a_bad_ticker_instead_of_raising",
+        "tests.test_screener::test_apply_filters_drops_below_min_adv",
+        "tests.test_screener::test_apply_filters_drops_below_min_score",
+        "tests.test_screener::test_blended_score_all_negative_signals_is_zero",
+        "tests.test_screener::test_blended_score_all_positive_signals_is_one",
+        "tests.test_screener::test_blended_score_falls_back_to_equal_weight_when_weights_are_all_zero",
+        "tests.test_screener::test_blended_score_neutral_signals_is_a_half",
+        "tests.test_screener::test_blended_score_weights_need_not_sum_to_one",
+        "tests.test_screener::test_build_screen_ranks_the_real_universe",
+        "tests.test_screener::test_build_screen_records_a_fetch_error_without_failing_the_run",
+        "tests.test_screener::test_compute_signals_bounded",
+        "tests.test_screener::test_liquidity_metrics_matches_manual_mean",
+        "tests.test_screener::test_load_config_fills_missing_keys_within_a_present_section",
+        "tests.test_screener::test_load_config_fills_missing_sections_from_defaults",
+        "tests.test_screener::test_load_config_reads_the_committed_rules_file",
+        "tests.test_screener::test_load_universe_missing_file_is_empty",
+        "tests.test_screener::test_load_universe_skips_blanks_and_comments",
+        "tests.test_screener::test_main_empty_universe_is_a_clean_failure",
+        "tests.test_screener::test_main_rejects_live_and_offline_together",
+        "tests.test_screener::test_main_runs_offline_against_the_real_fixtures_and_writes_all_three_files",
+        "tests.test_screener::test_rank_orders_by_score_descending_and_stamps_rank",
+        "tests.test_screener::test_write_csv_has_one_row_per_candidate",
+        "tests.test_screener::test_write_json_round_trips_the_screen",
+        "tests.test_screener::test_write_markdown_reports_errors_and_empty_screens",
+        "tests.test_trend::test_crossover_events_fire_only_on_the_flip_bar",
+        "tests.test_trend::test_crossover_events_needs_two_defined_bars",
+        "tests.test_trend::test_crossover_state_signs_and_undefined_rows",
+        "tests.test_trend::test_ema_crossover_rejects_fast_not_less_than_slow",
+        "tests.test_trend::test_ema_matches_pandas_ewm",
+        "tests.test_trend::test_ema_rejects_non_positive_span",
+        "tests.test_trend::test_sma_crossover_detects_a_known_death_cross",
+        "tests.test_trend::test_sma_crossover_detects_a_known_golden_cross",
+        "tests.test_trend::test_sma_crossover_rejects_fast_not_less_than_slow",
+        "tests.test_trend::test_sma_leading_values_are_nan_then_defined",
+        "tests.test_trend::test_sma_matches_pandas_rolling_mean",
+        "tests.test_trend::test_sma_rejects_non_positive_window",
+        "tests.test_trend::test_sma_window_one_equals_close",
+        "tests.test_trend::test_trend_score_ema_also_bounded",
+        "tests.test_trend::test_trend_score_flat_price_is_zero",
+        "tests.test_trend::test_trend_score_is_bounded_and_finite",
+        "tests.test_trend::test_trend_score_negative_when_price_ramping_down",
+        "tests.test_trend::test_trend_score_positive_when_price_ramping_up",
+        "tests.test_trend::test_trend_score_rejects_unknown_method",
+        "tests.test_volume::test_obv_adds_volume_on_up_days_and_subtracts_on_down_days",
+        "tests.test_volume::test_obv_length_matches_input",
+        "tests.test_volume::test_obv_starts_at_zero_with_no_prior_close",
+        "tests.test_volume::test_volume_score_ignores_obv_component_when_window_exceeds_series_length",
+        "tests.test_volume::test_volume_score_is_bounded_and_finite",
+        "tests.test_volume::test_volume_score_negative_when_price_falls_on_uniform_volume",
+        "tests.test_volume::test_volume_score_positive_for_a_volume_spike_on_flat_price",
+        "tests.test_volume::test_volume_score_positive_when_price_rises_on_uniform_volume",
+        "tests.test_volume::test_volume_score_zero_for_flat_price_and_flat_volume",
+        "tests.test_volume::test_volume_zscore_flags_a_spike",
+        "tests.test_volume::test_volume_zscore_is_zero_for_constant_volume",
+        "tests.test_volume::test_volume_zscore_leading_values_are_nan_then_defined",
+        "tests.test_volume::test_volume_zscore_matches_manual_calculation",
+        "tests.test_volume::test_volume_zscore_rejects_small_window"
+      ],
+      "repeated_from_prior_run": []
+    }
+  ],
+  "project": "STOCKSTALKER"
+}
