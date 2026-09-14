@@ -2,12 +2,15 @@
 against the committed fixtures."""
 
 import io
+from pathlib import Path
 
 import pytest
 from rich.console import Console
 
 from stockstalker import backtest, report, screener
 from stockstalker.data.providers import FixtureProvider
+
+ROOT_FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 
 
 @pytest.fixture
@@ -46,6 +49,24 @@ def test_render_screen_table_handles_no_candidates():
     empty = {"generated": "2026-09-07", "universe": "NSE", "source": "fixtures", "candidates": []}
     text = render(report.render_screen_table(empty))
     assert "2026-09-07" in text
+
+
+def test_render_screen_table_adds_valuation_columns_only_when_a_candidate_has_them(screen):
+    text_without = render(report.render_screen_table(screen))
+    assert "Implied CAGR" not in text_without
+
+    gated = dict(screen)
+    gated["candidates"] = [dict(c) for c in screen["candidates"]]
+    gated["candidates"][0]["valuation"] = {
+        "implied_cagr": -0.0049,
+        "implied_ebit_margin": 0.1337,
+        "implied_reinvestment": -0.1568,
+        "breakeven_growth": 0.0352,
+    }
+    text_with = render(report.render_screen_table(gated))
+    assert "Implied CAGR" in text_with
+    assert "-0.49%" in text_with
+    assert "+3.52%" in text_with
 
 
 def test_render_backtest_table_lists_every_result(backtest_report):
@@ -100,3 +121,51 @@ def test_main_empty_universe_is_a_clean_failure(tmp_path):
     empty.write_text("# nothing here\n")
     exit_code = report.main(["--universe", str(empty), "--output-dir", str(tmp_path)])
     assert exit_code == 1
+
+
+def test_main_requires_both_valuation_flags_together(tmp_path):
+    with pytest.raises(SystemExit):
+        report.main(["--output-dir", str(tmp_path), "--valuation-ticker", "RELIANCE.NS"])
+
+
+def test_main_applies_the_real_gulfoillub_valuation_contract_and_reports_no_match(tmp_path, capsys):
+    """End to end against reverse-dcf-engine's actual fixture output: GULFOILLUB isn't in
+    this repo's 3-ticker universe, so the honest outcome is no match, printed as such."""
+    contract = ROOT_FIXTURES / "valuation" / "GULFOILLUB.json"
+    exit_code = report.main(
+        [
+            "--output-dir", str(tmp_path),
+            "--date", "2026-09-07",
+            "--no-charts",
+            "--valuation-contract", str(contract),
+            "--valuation-ticker", "GULFOILLUB",
+        ]
+    )
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "is not in this screen's universe" in out
+    assert "Implied CAGR" not in out
+
+
+def test_main_attaches_valuation_when_the_ticker_matches_the_universe(tmp_path, capsys):
+    contract = tmp_path / "contract.json"
+    contract.write_text('{"valuation": {"implied_cagr": 0.1, "implied_ebit_margin": 0.2, '
+                         '"implied_reinvestment": 0.3, "breakeven_growth": 0.08}}')
+    exit_code = report.main(
+        [
+            "--output-dir", str(tmp_path),
+            "--date", "2026-09-07",
+            "--no-charts",
+            "--valuation-contract", str(contract),
+            "--valuation-ticker", "RELIANCE.NS",
+        ]
+    )
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "attached reverse-dcf-engine's contract for RELIANCE.NS" in out
+    # Column headers/values can wrap or truncate depending on the terminal width rich
+    # detects (narrow in a captured, non-tty test run) -- assert on fragments that
+    # survive either way rather than the exact rendered string.
+    assert "CAGR" in out
+    assert "growth" in out
+    assert "8.00%" in out  # breakeven_growth, the narrower of the two new columns

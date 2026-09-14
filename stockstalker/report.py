@@ -24,6 +24,7 @@ from rich.table import Table
 
 from .backtest import DEFAULT_THRESHOLD, run_backtest
 from .data.providers import ProviderError, load
+from .gates.valuation import apply_valuation_gate, load_contract
 from .screener import CONFIG_PATH, UNIVERSE_PATH, build_screen, load_config, load_universe
 from .viz.liquidity import plot_liquidity_heatmap
 
@@ -32,7 +33,14 @@ OUTPUT_DIR = ROOT / "outputs"
 
 
 def render_screen_table(screen: dict[str, Any]) -> Table:
-    """Ranked candidates, one row per ticker that cleared the screen's filters."""
+    """Ranked candidates, one row per ticker that cleared the screen's filters.
+
+    Adds a Valuation column (v0.7, reverse-dcf-engine's implied vs. breakeven
+    growth) only when at least one candidate carries that key — most runs
+    have none, since the gate only attaches it to the one ticker a satellite
+    has actually researched.
+    """
+    has_valuation = any("valuation" in c for c in screen["candidates"])
     table = Table(title=f"Screen — {screen['generated']} ({screen['universe']}, {screen['source']})")
     table.add_column("Rank", justify="right")
     table.add_column("Ticker")
@@ -41,9 +49,12 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
     table.add_column("Momentum", justify="right")
     table.add_column("Volume", justify="right")
     table.add_column("ADV(20d)", justify="right")
+    if has_valuation:
+        table.add_column("Implied CAGR")
+        table.add_column("Breakeven growth")
     for c in screen["candidates"]:
         s = c["signals"]
-        table.add_row(
+        row = [
             str(c["rank"]),
             c["ticker"],
             f"{c['score']:.4f}",
@@ -51,7 +62,12 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
             f"{s['momentum']:+.3f}",
             f"{s['volume']:+.3f}",
             f"{c['liquidity']['adv_20d']:,.0f}",
-        )
+        ]
+        if has_valuation:
+            v = c.get("valuation")
+            row.append(f"{v['implied_cagr']:+.2%}" if v else "-")
+            row.append(f"{v['breakeven_growth']:+.2%}" if v else "-")
+        table.add_row(*row)
     return table
 
 
@@ -110,7 +126,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--no-charts", action="store_true", help="skip writing heatmap PNGs")
     parser.add_argument("--date", default=None, help="override the generated date (mainly for tests)")
+    parser.add_argument(
+        "--valuation-contract",
+        default=None,
+        help="v0.7 gate: path to a reverse-dcf-engine --contract JSON file to attach to the "
+        "matching candidate (requires --valuation-ticker)",
+    )
+    parser.add_argument(
+        "--valuation-ticker",
+        default=None,
+        help="the ticker --valuation-contract was solved for",
+    )
     args = parser.parse_args(argv)
+
+    if bool(args.valuation_contract) != bool(args.valuation_ticker):
+        parser.error("--valuation-contract and --valuation-ticker must be given together")
 
     if args.live and args.offline:
         parser.error("--live and --offline are mutually exclusive")
@@ -128,6 +158,18 @@ def main(argv: list[str] | None = None) -> int:
     errors: list[str] = []
     screen = build_screen(tickers, provider_name, cfg, "NSE", generated, errors)
     backtest_report = run_backtest(tickers, provider_name, cfg, args.threshold, generated, errors)
+
+    if args.valuation_contract:
+        valuation = load_contract(args.valuation_contract)
+        screen, matched = apply_valuation_gate(screen, args.valuation_ticker, valuation)
+        if matched:
+            console.print(
+                f"valuation gate: attached reverse-dcf-engine's contract for {args.valuation_ticker}"
+            )
+        else:
+            console.print(
+                f"valuation gate: {args.valuation_ticker} is not in this screen's universe -- no candidate updated"
+            )
 
     console.print(render_screen_table(screen))
     if backtest_report["results"]:
