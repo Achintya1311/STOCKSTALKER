@@ -69,6 +69,24 @@ def test_render_screen_table_adds_valuation_columns_only_when_a_candidate_has_th
     assert "+3.52%" in text_with
 
 
+def test_render_screen_table_adds_risk_columns_only_when_a_candidate_has_them(screen):
+    text_without = render(report.render_screen_table(screen))
+    assert "VaR 95%" not in text_without
+
+    gated = dict(screen)
+    gated["candidates"] = [dict(c) for c in screen["candidates"]]
+    gated["candidates"][0]["risk"] = {
+        "var_95": -0.0915,
+        "cvar_95": -0.1082,
+        "max_dd_sim": -0.0596,
+        "horizon_days": 20,
+    }
+    text_with = render(report.render_screen_table(gated))
+    assert "VaR 95%" in text_with
+    assert "-9.15%" in text_with
+    assert "-10.82%" in text_with
+
+
 def test_render_backtest_table_lists_every_result(backtest_report):
     text = render(report.render_backtest_table(backtest_report))
     assert "beat buy-and-hold" in text
@@ -169,3 +187,32 @@ def test_main_attaches_valuation_when_the_ticker_matches_the_universe(tmp_path, 
     assert "CAGR" in out
     assert "growth" in out
     assert "8.00%" in out  # breakeven_growth, the narrower of the two new columns
+
+
+def test_main_requires_both_risk_flags_together(tmp_path):
+    with pytest.raises(SystemExit):
+        report.main(["--output-dir", str(tmp_path), "--risk-ticker", "RELIANCE.NS"])
+
+
+def test_main_applies_the_real_reliance_risk_contract_and_reports_a_match(tmp_path, capsys):
+    """End to end against monte-carlo-risk-lab's actual fixture output: unlike the v0.7
+    valuation gate's GULFOILLUB (outside this repo's universe), RELIANCE is one of this
+    repo's own three universe tickers, so this is a genuine match."""
+    contract = ROOT_FIXTURES / "risk" / "RELIANCE.json"
+    exit_code = report.main(
+        [
+            "--output-dir", str(tmp_path),
+            "--date", "2026-09-07",
+            "--no-charts",
+            "--risk-contract", str(contract),
+            "--risk-ticker", "RELIANCE",
+        ]
+    )
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "attached monte-carlo-risk-lab's contract for RELIANCE" in out
+    # Column headers/values can wrap or truncate depending on the terminal width rich
+    # detects (narrow in a captured, non-tty test run) -- assert on fragments that
+    # survive either way, same approach the valuation gate's test above uses.
+    assert "VaR" in out
+    assert "-9.15%" in out

@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.3 risk gate (package v0.7.1) — 2026-09-18
+
+VaR/CVaR risk envelope on survivors. monte-carlo-risk-lab finished its 7-day plan out
+of pipeline order, behind reverse-dcf-engine (v0.7, shipped 2026-09-14) rather than
+ahead of it — the release-track label stays v0.3 (pipeline position), but this repo's
+own package version cannot honestly move backward from 0.7.0 to reflect that, since
+v0.7's valuation gate is still present and this adds to it, not replaces it. Bumping to
+a patch release (0.7.1) instead of a new minor is a deliberate deviation from the
+"version = release label" convention v0.7.0's changelog entry described — that
+convention assumed shipping order would track pipeline order, which it has not.
+Recorded here rather than silently reusing 0.7.0 or renumbering past releases.
+
+**Ships:**
+- `stockstalker.gates.risk` — reads monte-carlo-risk-lab's file contract
+  (`{"risk": {"var_95", "cvar_95", "max_dd_sim", "horizon_days"}}`, written by that
+  repo's `python -m mcsim.portfolio --contract`) and attaches it to the one screen
+  candidate whose ticker matches, under the `risk` key `schema/v1.json` already
+  reserves. Every other candidate passes through unchanged; a ticker outside the
+  current universe is a reported non-match, not an error — same shape as v0.7's
+  valuation gate.
+- `stockstalker.report` — new `--risk-contract`/`--risk-ticker` flags apply the gate
+  before rendering; the screen table grows two columns (VaR 95%, CVaR 95%) only when
+  at least one candidate actually carries a risk block.
+
+**Verified before tagging:**
+- `pytest` — 176 passed, 1 skipped (the live-network smoke test; no network in this
+  environment, expected)
+- `python -m stockstalker.gates.risk --screen <screen.json> --contract
+  fixtures/risk/RELIANCE.json --ticker RELIANCE` — run against the real
+  monte-carlo-risk-lab fixture output
+- `python -m stockstalker.report --offline --risk-contract fixtures/risk/RELIANCE.json
+  --risk-ticker RELIANCE` — end to end
+
+**Unlike v0.7's non-match:** monte-carlo-risk-lab's fixture (`RELIANCE_NS.csv`) is
+itself copied from this repo's own committed RELIANCE history, and RELIANCE.NS is one
+of this repo's three universe tickers — so this integration is a genuine match on real
+data, not a synthetic stand-in exercised only in tests.
+
 ## v0.7.0 — 2026-09-14
 
 Valuation gate on survivors. Skips v0.2–v0.6 by design — the hub's release track assigns

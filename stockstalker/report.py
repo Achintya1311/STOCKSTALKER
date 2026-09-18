@@ -24,7 +24,8 @@ from rich.table import Table
 
 from .backtest import DEFAULT_THRESHOLD, run_backtest
 from .data.providers import ProviderError, load
-from .gates.valuation import apply_valuation_gate, load_contract
+from .gates.risk import apply_risk_gate, load_contract as load_risk_contract
+from .gates.valuation import apply_valuation_gate, load_contract as load_valuation_contract
 from .screener import CONFIG_PATH, UNIVERSE_PATH, build_screen, load_config, load_universe
 from .viz.liquidity import plot_liquidity_heatmap
 
@@ -41,6 +42,7 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
     has actually researched.
     """
     has_valuation = any("valuation" in c for c in screen["candidates"])
+    has_risk = any("risk" in c for c in screen["candidates"])
     table = Table(title=f"Screen — {screen['generated']} ({screen['universe']}, {screen['source']})")
     table.add_column("Rank", justify="right")
     table.add_column("Ticker")
@@ -49,6 +51,9 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
     table.add_column("Momentum", justify="right")
     table.add_column("Volume", justify="right")
     table.add_column("ADV(20d)", justify="right")
+    if has_risk:
+        table.add_column("VaR 95%")
+        table.add_column("CVaR 95%")
     if has_valuation:
         table.add_column("Implied CAGR")
         table.add_column("Breakeven growth")
@@ -63,6 +68,10 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
             f"{s['volume']:+.3f}",
             f"{c['liquidity']['adv_20d']:,.0f}",
         ]
+        if has_risk:
+            r = c.get("risk")
+            row.append(f"{r['var_95']:+.2%}" if r else "-")
+            row.append(f"{r['cvar_95']:+.2%}" if r else "-")
         if has_valuation:
             v = c.get("valuation")
             row.append(f"{v['implied_cagr']:+.2%}" if v else "-")
@@ -137,10 +146,24 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="the ticker --valuation-contract was solved for",
     )
+    parser.add_argument(
+        "--risk-contract",
+        default=None,
+        help="v0.3 gate: path to a monte-carlo-risk-lab --contract JSON file to attach to the "
+        "matching candidate (requires --risk-ticker)",
+    )
+    parser.add_argument(
+        "--risk-ticker",
+        default=None,
+        help="the ticker --risk-contract was solved for",
+    )
     args = parser.parse_args(argv)
 
     if bool(args.valuation_contract) != bool(args.valuation_ticker):
         parser.error("--valuation-contract and --valuation-ticker must be given together")
+
+    if bool(args.risk_contract) != bool(args.risk_ticker):
+        parser.error("--risk-contract and --risk-ticker must be given together")
 
     if args.live and args.offline:
         parser.error("--live and --offline are mutually exclusive")
@@ -160,7 +183,7 @@ def main(argv: list[str] | None = None) -> int:
     backtest_report = run_backtest(tickers, provider_name, cfg, args.threshold, generated, errors)
 
     if args.valuation_contract:
-        valuation = load_contract(args.valuation_contract)
+        valuation = load_valuation_contract(args.valuation_contract)
         screen, matched = apply_valuation_gate(screen, args.valuation_ticker, valuation)
         if matched:
             console.print(
@@ -169,6 +192,18 @@ def main(argv: list[str] | None = None) -> int:
         else:
             console.print(
                 f"valuation gate: {args.valuation_ticker} is not in this screen's universe -- no candidate updated"
+            )
+
+    if args.risk_contract:
+        risk = load_risk_contract(args.risk_contract)
+        screen, matched = apply_risk_gate(screen, args.risk_ticker, risk)
+        if matched:
+            console.print(
+                f"risk gate: attached monte-carlo-risk-lab's contract for {args.risk_ticker}"
+            )
+        else:
+            console.print(
+                f"risk gate: {args.risk_ticker} is not in this screen's universe -- no candidate updated"
             )
 
     console.print(render_screen_table(screen))
