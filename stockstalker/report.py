@@ -24,6 +24,7 @@ from rich.table import Table
 
 from .backtest import DEFAULT_THRESHOLD, run_backtest
 from .data.providers import ProviderError, load
+from .gates.factor import apply_factor_gate, load_contract as load_factor_contract
 from .gates.risk import apply_risk_gate, load_contract as load_risk_contract
 from .gates.valuation import apply_valuation_gate, load_contract as load_valuation_contract
 from .screener import CONFIG_PATH, UNIVERSE_PATH, build_screen, load_config, load_universe
@@ -37,12 +38,14 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
     """Ranked candidates, one row per ticker that cleared the screen's filters.
 
     Adds a Valuation column (v0.7, reverse-dcf-engine's implied vs. breakeven
-    growth) only when at least one candidate carries that key — most runs
-    have none, since the gate only attaches it to the one ticker a satellite
-    has actually researched.
+    growth) and a Factor column (v0.2, fama-french-factor-model's alpha vs.
+    market loading) only when at least one candidate carries that key — most
+    runs have none, since a gate only attaches it to the one ticker a
+    satellite has actually researched.
     """
     has_valuation = any("valuation" in c for c in screen["candidates"])
     has_risk = any("risk" in c for c in screen["candidates"])
+    has_factor = any("factor" in c for c in screen["candidates"])
     table = Table(title=f"Screen — {screen['generated']} ({screen['universe']}, {screen['source']})")
     table.add_column("Rank", justify="right")
     table.add_column("Ticker")
@@ -57,6 +60,10 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
     if has_valuation:
         table.add_column("Implied CAGR")
         table.add_column("Breakeven growth")
+    if has_factor:
+        table.add_column("Alpha (ann.)")
+        table.add_column("Mkt loading")
+        table.add_column("Sig.(5%)")
     for c in screen["candidates"]:
         s = c["signals"]
         row = [
@@ -76,6 +83,11 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
             v = c.get("valuation")
             row.append(f"{v['implied_cagr']:+.2%}" if v else "-")
             row.append(f"{v['breakeven_growth']:+.2%}" if v else "-")
+        if has_factor:
+            f = c.get("factor")
+            row.append(f"{f['alpha_annual']:+.2%}" if f else "-")
+            row.append(f"{f['loadings'].get('mkt'):+.2f}" if f else "-")
+            row.append(str(f["significant"]) if f else "-")
         table.add_row(*row)
     return table
 
@@ -157,6 +169,17 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="the ticker --risk-contract was solved for",
     )
+    parser.add_argument(
+        "--factor-contract",
+        default=None,
+        help="v0.2 gate: path to a fama-french-factor-model --contract JSON file to attach to the "
+        "matching candidate (requires --factor-ticker)",
+    )
+    parser.add_argument(
+        "--factor-ticker",
+        default=None,
+        help="the ticker --factor-contract was solved for",
+    )
     args = parser.parse_args(argv)
 
     if bool(args.valuation_contract) != bool(args.valuation_ticker):
@@ -164,6 +187,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if bool(args.risk_contract) != bool(args.risk_ticker):
         parser.error("--risk-contract and --risk-ticker must be given together")
+
+    if bool(args.factor_contract) != bool(args.factor_ticker):
+        parser.error("--factor-contract and --factor-ticker must be given together")
 
     if args.live and args.offline:
         parser.error("--live and --offline are mutually exclusive")
@@ -204,6 +230,18 @@ def main(argv: list[str] | None = None) -> int:
         else:
             console.print(
                 f"risk gate: {args.risk_ticker} is not in this screen's universe -- no candidate updated"
+            )
+
+    if args.factor_contract:
+        fac = load_factor_contract(args.factor_contract)
+        screen, matched = apply_factor_gate(screen, args.factor_ticker, fac)
+        if matched:
+            console.print(
+                f"factor gate: attached fama-french-factor-model's contract for {args.factor_ticker}"
+            )
+        else:
+            console.print(
+                f"factor gate: {args.factor_ticker} is not in this screen's universe -- no candidate updated"
             )
 
     console.print(render_screen_table(screen))

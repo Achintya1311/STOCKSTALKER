@@ -1,5 +1,47 @@
 # Changelog
 
+## v0.2 factor gate (package v0.7.2) — 2026-09-22
+
+Factor-adjusted ranking on the screen. fama-french-factor-model finished its 7-day plan
+out of pipeline order, behind reverse-dcf-engine (v0.7) and monte-carlo-risk-lab (v0.3)
+rather than ahead of them — the release-track label stays v0.2 (pipeline position), but
+this repo's own package version cannot honestly move backward from 0.7.1 to reflect
+that, since v0.7's valuation gate and v0.3's risk gate are both still present and this
+adds to them, not replaces them. Bumping to another patch release (0.7.2), the same
+deviation v0.3's own changelog entry already recorded and explained.
+
+**Ships:**
+- `stockstalker.gates.factor` — reads fama-french-factor-model's file contract
+  (`{"factor": {"alpha_annual", "alpha_t", "significant", "loadings"}}`, written by that
+  repo's `python -m factors.screen_check --contract ... --contract-ticker ...`) and
+  attaches it to the one screen candidate whose ticker matches, under the `factor` key
+  `schema/v1.json` already reserves. Every other candidate passes through unchanged; a
+  ticker outside the current universe is a reported non-match, not an error — same shape
+  as v0.3's risk gate and v0.7's valuation gate.
+- `stockstalker.report` — new `--factor-contract`/`--factor-ticker` flags apply the gate
+  before rendering; the screen table grows three columns (Alpha (ann.), Mkt loading,
+  Sig.(5%)) only when at least one candidate actually carries a factor block.
+
+**Verified before tagging:**
+- `pytest` — 186 passed, 0 skipped
+- `python -m stockstalker.gates.factor --screen <screen.json> --contract
+  fixtures/factor/RELIANCE.json --ticker RELIANCE` — run against the real
+  fama-french-factor-model fixture output
+- `python -m stockstalker.report --offline --factor-contract fixtures/factor/RELIANCE.json
+  --factor-ticker RELIANCE` — end to end
+
+**Unlike v0.7's non-match, like v0.3's:** fama-french-factor-model committed a snapshot of
+this repo's own `screen_2026-09-20.json` and OHLCV fixtures (`RELIANCE.NS`, `TATACHEM.NS`,
+`CROMPTON.NS` — all three of this repo's universe tickers), so every candidate this repo
+screens has a real factor result available, not just RELIANCE; RELIANCE was the one run
+through `--contract` here to keep the CLI's single-ticker shape consistent with v0.3 and
+v0.7. The genuine result is an honest negative: none of the three candidates shows a
+statistically significant alpha under any model fama-french-factor-model ran (CAPM, FF3,
+FF5+momentum), plain-OLS or Newey-West-corrected — but that repo's own README records only
+22 overlapping months between the two fixture windows, underpowered for up to seven
+parameters, so "insignificant" here means "underpowered," not "proven to be beta in
+disguise." See both repos' Limitations sections.
+
 ## v0.3 risk gate (package v0.7.1) — 2026-09-18
 
 VaR/CVaR risk envelope on survivors. monte-carlo-risk-lab finished its 7-day plan out

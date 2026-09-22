@@ -112,6 +112,7 @@ supports a stronger claim either way. Full numbers in
 - The pipeline audit (`python -m stockstalker.audit`) only proves the indicators are causal — no future data leaks into a past bar's value. It says nothing about whether the screen's thresholds, weights, or the backtest's rule are any good; that question is still open per the two points above.
 - The v0.7 valuation gate (`stockstalker.gates.valuation`) reads reverse-dcf-engine's contract for Gulf Oil Lubricants India (GULFOILLUB), a name that is not in this repo's 3-ticker fixture universe (RELIANCE, TATACHEM, CROMPTON). Running the real integration end to end today produces zero matches — the gate logic is exercised by tests against a synthetic contract keyed to a universe ticker, but no genuine valuation figure has actually been attached to a live candidate yet. That happens only once the two repos' universes overlap, or a satellite is re-run against a shared ticker.
 - The v0.3 risk gate (`stockstalker.gates.risk`) reads monte-carlo-risk-lab's VaR/CVaR contract for RELIANCE, which *is* in this repo's universe, so `--risk-contract fixtures/risk/RELIANCE.json --risk-ticker RELIANCE` genuinely attaches to a live candidate rather than matching a synthetic stand-in. But the contract itself is only as good as monte-carlo-risk-lab's own model: that repo's README records that its Kupiec backtest rejects the 1-day parametric VaR at the 99% confidence level on this exact fixture (thin GBM tails understate real exceptions), and `var_95`/`cvar_95` here come from its historical (non-parametric) method specifically to avoid inheriting that failure — but the 99% figure is not in this contract at all, and a reader who needs it has to go read that repo directly.
+- The v0.2 factor gate (`stockstalker.gates.factor`) reads fama-french-factor-model's FF5+momentum contract for RELIANCE — another genuine match, like v0.3's, not a synthetic stand-in. But the underlying regression is underpowered by that repo's own account: only 22 months overlap between this repo's OHLCV fixture window and Ken French's factor fixture, not enough to estimate up to seven parameters with any confidence, and it regresses INR closing prices against USD-denominated factors with no currency adjustment. All three of this repo's candidates come back with `significant: false` under every model that repo ran (plain-OLS and Newey-West alike) — read that as "underpowered," not as "the screen's edge is proven to be beta in disguise." See that repo's own README for the full caveat list.
 
 ## Where this sits
 
@@ -123,7 +124,9 @@ Publishes the contract every satellite repo reads and extends:
   "candidates": [
     {"ticker": "EXAMPLE.NS", "rank": 1, "score": 0.82,
      "signals": {"trend": 0.9, "momentum": 0.7, "volume": 0.85},
-     "liquidity": {"adv_20d": 1234567, "spread_bps": 12}}
+     "liquidity": {"adv_20d": 1234567, "spread_bps": 12},
+     "factor": {"alpha_annual": -0.039, "alpha_t": -0.19, "significant": false,
+                "loadings": {"mkt": 0.02, "smb": 0.10, "hml": -0.25}}}
   ]
 }
 ```
