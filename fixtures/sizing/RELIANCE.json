@@ -1,0 +1,7 @@
+{
+  "sizing": {
+    "weight": 0.5,
+    "method": "max_sharpe_ledoit_wolf",
+    "constraint_binding": "Energy"
+  }
+}

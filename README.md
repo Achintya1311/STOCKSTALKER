@@ -113,6 +113,7 @@ supports a stronger claim either way. Full numbers in
 - The v0.7 valuation gate (`stockstalker.gates.valuation`) reads reverse-dcf-engine's contract for Gulf Oil Lubricants India (GULFOILLUB), a name that is not in this repo's 3-ticker fixture universe (RELIANCE, TATACHEM, CROMPTON). Running the real integration end to end today produces zero matches — the gate logic is exercised by tests against a synthetic contract keyed to a universe ticker, but no genuine valuation figure has actually been attached to a live candidate yet. That happens only once the two repos' universes overlap, or a satellite is re-run against a shared ticker.
 - The v0.3 risk gate (`stockstalker.gates.risk`) reads monte-carlo-risk-lab's VaR/CVaR contract for RELIANCE, which *is* in this repo's universe, so `--risk-contract fixtures/risk/RELIANCE.json --risk-ticker RELIANCE` genuinely attaches to a live candidate rather than matching a synthetic stand-in. But the contract itself is only as good as monte-carlo-risk-lab's own model: that repo's README records that its Kupiec backtest rejects the 1-day parametric VaR at the 99% confidence level on this exact fixture (thin GBM tails understate real exceptions), and `var_95`/`cvar_95` here come from its historical (non-parametric) method specifically to avoid inheriting that failure — but the 99% figure is not in this contract at all, and a reader who needs it has to go read that repo directly.
 - The v0.2 factor gate (`stockstalker.gates.factor`) reads fama-french-factor-model's FF5+momentum contract for RELIANCE — another genuine match, like v0.3's, not a synthetic stand-in. But the underlying regression is underpowered by that repo's own account: only 22 months overlap between this repo's OHLCV fixture window and Ken French's factor fixture, not enough to estimate up to seven parameters with any confidence, and it regresses INR closing prices against USD-denominated factors with no currency adjustment. All three of this repo's candidates come back with `significant: false` under every model that repo ran (plain-OLS and Newey-West alike) — read that as "underpowered," not as "the screen's edge is proven to be beta in disguise." See that repo's own README for the full caveat list.
+- The v0.4 sizing gate (`stockstalker.gates.sizing`) reads markowitz-portfolio-optimizer's contract for RELIANCE.NS — a genuine match, like v0.3's and v0.2's, since that repo built its own fixtures from this repo's committed OHLCV history. But the number attached is not a diversified allocation: that repo's raw unconstrained max-Sharpe tangency portfolio on its 3-name universe is a 100% RELIANCE.NS corner solution, so the contract instead reports a sector-capped solve (50% cap) — RELIANCE.NS gets exactly 50%, with its own single-member sector ("Energy") as the binding constraint. Every ticker in that universe sits in its own sector, so the cap is mathematically identical to a plain position limit on RELIANCE.NS alone, not a genuine multi-name diversification constraint. And a less flattering number from that repo's own README: the sector-capped portfolio's Sharpe ratio is *worse* than the uncapped one (-0.83 vs -0.30) — forcing this "diversification" made risk-adjusted return worse, not better, on this fixture set. Read the 50% weight as one candidate's sizing gate output, not a recommended real-money allocation.
 
 ## Where this sits
 
@@ -126,12 +127,14 @@ Publishes the contract every satellite repo reads and extends:
      "signals": {"trend": 0.9, "momentum": 0.7, "volume": 0.85},
      "liquidity": {"adv_20d": 1234567, "spread_bps": 12},
      "factor": {"alpha_annual": -0.039, "alpha_t": -0.19, "significant": false,
-                "loadings": {"mkt": 0.02, "smb": 0.10, "hml": -0.25}}}
+                "loadings": {"mkt": 0.02, "smb": 0.10, "hml": -0.25}},
+     "sizing": {"weight": 0.5, "method": "max_sharpe_ledoit_wolf",
+                "constraint_binding": "Energy"}}
   ]
 }
 ```
 
-Satellites add keys under their own namespace — `factor`, `risk`, `sentiment`, `valuation`, `fundamentals` — rather than reshaping what already exists. Communication is by file, not by import, so any repo can be refactored without breaking the others.
+Satellites add keys under their own namespace — `factor`, `risk`, `sizing`, `sentiment`, `valuation`, `fundamentals` — rather than reshaping what already exists. Communication is by file, not by import, so any repo can be refactored without breaking the others.
 
 ## Exam mapping
 

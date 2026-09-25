@@ -216,3 +216,31 @@ def test_main_applies_the_real_reliance_risk_contract_and_reports_a_match(tmp_pa
     # survive either way, same approach the valuation gate's test above uses.
     assert "VaR" in out
     assert "-9.15%" in out
+
+
+def test_main_requires_both_sizing_flags_together(tmp_path):
+    with pytest.raises(SystemExit):
+        report.main(["--output-dir", str(tmp_path), "--sizing-ticker", "RELIANCE.NS"])
+
+
+def test_main_applies_the_real_reliance_sizing_contract_and_reports_a_match(tmp_path, capsys):
+    """End to end against markowitz-portfolio-optimizer's actual fixture output: like the
+    v0.3 risk gate's RELIANCE (and unlike the v0.7 valuation gate's GULFOILLUB, outside
+    this repo's universe), RELIANCE.NS is one of this repo's own three universe tickers,
+    so this is a genuine match."""
+    contract = ROOT_FIXTURES / "sizing" / "RELIANCE.json"
+    exit_code = report.main(
+        [
+            "--output-dir", str(tmp_path),
+            "--date", "2026-09-07",
+            "--no-charts",
+            "--sizing-contract", str(contract),
+            "--sizing-ticker", "RELIANCE",
+        ]
+    )
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "attached markowitz-portfolio-optimizer's contract for RELIANCE" in out
+    assert "Weight" in out
+    assert "50.00%" in out
+    assert "Energy" in out

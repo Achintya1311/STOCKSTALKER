@@ -1,5 +1,50 @@
 # Changelog
 
+## v0.4 sizing gate (package v0.7.3) — 2026-09-25
+
+Optimizer-driven position sizing on the screen. markowitz-portfolio-optimizer finished
+its 7-day plan out of pipeline order, behind reverse-dcf-engine (v0.7), monte-carlo-
+risk-lab (v0.3) and fama-french-factor-model (v0.2) rather than ahead of them — same
+recurring deviation v0.3's and v0.2's changelog entries already recorded. The
+release-track label stays v0.4 (pipeline position); this repo's own package version
+cannot honestly move backward from 0.7.2, so it bumps to another patch release (0.7.3)
+instead.
+
+**Ships:**
+- `stockstalker.gates.sizing` — reads markowitz-portfolio-optimizer's file contract
+  (`{"sizing": {"weight", "method", "constraint_binding"}}`, written by that repo's
+  `python -m optimizer.sizing --contract ... --contract-ticker ...`) and attaches it to
+  the one screen candidate whose ticker matches, under the `sizing` key `schema/v1.json`
+  already reserves. Every other candidate passes through unchanged; a ticker outside the
+  current universe is a reported non-match, not an error — same shape as every other
+  gate in this repo.
+- `stockstalker.report` — new `--sizing-contract`/`--sizing-ticker` flags apply the gate
+  before rendering; the screen table grows two columns (Weight, Constraint) only when at
+  least one candidate actually carries a sizing block.
+
+**Verified before tagging:**
+- `pytest` — 197 passed, 1 failed (unrelated: the live-network smoke test hit a real,
+  rate-limited yfinance response with a `NaN` close for today's date — a live-data
+  anomaly, not a regression from this change; every test this integration added passed)
+- `python -m stockstalker.gates.sizing --screen <screen.json> --contract
+  fixtures/sizing/RELIANCE.json --ticker RELIANCE` — run against the real
+  markowitz-portfolio-optimizer fixture output
+- `python -m stockstalker.report --offline --sizing-contract fixtures/sizing/RELIANCE.json
+  --sizing-ticker RELIANCE` — end to end, and again with a ticker outside the universe to
+  confirm the honest non-match path
+
+**Unlike v0.7's non-match, like v0.3's and v0.2's:** markowitz-portfolio-optimizer built
+its Day 1 fixtures from this repo's own committed OHLCV history (`RELIANCE.NS`,
+`TATACHEM.NS`, `CROMPTON.NS`), so RELIANCE.NS is a real shared ticker, not a synthetic
+stand-in. The genuine result: markowitz-portfolio-optimizer's raw unconstrained max-Sharpe
+tangency portfolio is a 100% single-name corner solution (a finding that repo's own Day
+3/4/6/7 already reported), so the contract published here is the *sector-capped* solve
+instead (50% cap) — RELIANCE.NS's weight comes in at exactly 50%, with `Energy` (its own,
+single-member sector) recorded as the binding constraint. Because that fixture universe
+puts every ticker in its own sector, this is mathematically identical to a plain position
+limit on RELIANCE.NS alone, not a distinct multi-name sector constraint — see both repos'
+Limitations sections.
+
 ## v0.2 factor gate (package v0.7.2) — 2026-09-22
 
 Factor-adjusted ranking on the screen. fama-french-factor-model finished its 7-day plan

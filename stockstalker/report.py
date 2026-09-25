@@ -26,6 +26,7 @@ from .backtest import DEFAULT_THRESHOLD, run_backtest
 from .data.providers import ProviderError, load
 from .gates.factor import apply_factor_gate, load_contract as load_factor_contract
 from .gates.risk import apply_risk_gate, load_contract as load_risk_contract
+from .gates.sizing import apply_sizing_gate, load_contract as load_sizing_contract
 from .gates.valuation import apply_valuation_gate, load_contract as load_valuation_contract
 from .screener import CONFIG_PATH, UNIVERSE_PATH, build_screen, load_config, load_universe
 from .viz.liquidity import plot_liquidity_heatmap
@@ -38,14 +39,16 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
     """Ranked candidates, one row per ticker that cleared the screen's filters.
 
     Adds a Valuation column (v0.7, reverse-dcf-engine's implied vs. breakeven
-    growth) and a Factor column (v0.2, fama-french-factor-model's alpha vs.
-    market loading) only when at least one candidate carries that key — most
-    runs have none, since a gate only attaches it to the one ticker a
-    satellite has actually researched.
+    growth), a Factor column (v0.2, fama-french-factor-model's alpha vs.
+    market loading) and a Weight/Constraint column (v0.4, markowitz-
+    portfolio-optimizer's sector-capped position size) only when at least
+    one candidate carries that key — most runs have none, since a gate only
+    attaches it to the one ticker a satellite has actually researched.
     """
     has_valuation = any("valuation" in c for c in screen["candidates"])
     has_risk = any("risk" in c for c in screen["candidates"])
     has_factor = any("factor" in c for c in screen["candidates"])
+    has_sizing = any("sizing" in c for c in screen["candidates"])
     table = Table(title=f"Screen — {screen['generated']} ({screen['universe']}, {screen['source']})")
     table.add_column("Rank", justify="right")
     table.add_column("Ticker")
@@ -64,6 +67,9 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
         table.add_column("Alpha (ann.)")
         table.add_column("Mkt loading")
         table.add_column("Sig.(5%)")
+    if has_sizing:
+        table.add_column("Weight")
+        table.add_column("Constraint")
     for c in screen["candidates"]:
         s = c["signals"]
         row = [
@@ -88,6 +94,10 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
             row.append(f"{f['alpha_annual']:+.2%}" if f else "-")
             row.append(f"{f['loadings'].get('mkt'):+.2f}" if f else "-")
             row.append(str(f["significant"]) if f else "-")
+        if has_sizing:
+            sz = c.get("sizing")
+            row.append(f"{sz['weight']:.2%}" if sz else "-")
+            row.append(sz["constraint_binding"] if sz else "-")
         table.add_row(*row)
     return table
 
@@ -180,6 +190,17 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="the ticker --factor-contract was solved for",
     )
+    parser.add_argument(
+        "--sizing-contract",
+        default=None,
+        help="v0.4 gate: path to a markowitz-portfolio-optimizer --contract JSON file to attach to the "
+        "matching candidate (requires --sizing-ticker)",
+    )
+    parser.add_argument(
+        "--sizing-ticker",
+        default=None,
+        help="the ticker --sizing-contract was solved for",
+    )
     args = parser.parse_args(argv)
 
     if bool(args.valuation_contract) != bool(args.valuation_ticker):
@@ -190,6 +211,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if bool(args.factor_contract) != bool(args.factor_ticker):
         parser.error("--factor-contract and --factor-ticker must be given together")
+
+    if bool(args.sizing_contract) != bool(args.sizing_ticker):
+        parser.error("--sizing-contract and --sizing-ticker must be given together")
 
     if args.live and args.offline:
         parser.error("--live and --offline are mutually exclusive")
@@ -242,6 +266,18 @@ def main(argv: list[str] | None = None) -> int:
         else:
             console.print(
                 f"factor gate: {args.factor_ticker} is not in this screen's universe -- no candidate updated"
+            )
+
+    if args.sizing_contract:
+        sz = load_sizing_contract(args.sizing_contract)
+        screen, matched = apply_sizing_gate(screen, args.sizing_ticker, sz)
+        if matched:
+            console.print(
+                f"sizing gate: attached markowitz-portfolio-optimizer's contract for {args.sizing_ticker}"
+            )
+        else:
+            console.print(
+                f"sizing gate: {args.sizing_ticker} is not in this screen's universe -- no candidate updated"
             )
 
     console.print(render_screen_table(screen))
