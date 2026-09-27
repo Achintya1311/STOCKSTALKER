@@ -61,7 +61,14 @@ def _normalise(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
     df = df[COLUMNS].copy()
     df.index = pd.to_datetime(df.index).tz_localize(None)
     df.index.name = "date"
-    return df.sort_index().dropna(how="all")
+    # how="any", not "all": yfinance's most recent bar can be a still-forming
+    # session with some OHLCV fields populated and one (often close) still
+    # NaN - not a fully-empty row, so "all" let it through. A bar missing any
+    # field isn't a completed trading day and shouldn't reach the pipeline.
+    df = df.sort_index().dropna(how="any")
+    if df.empty:
+        raise ProviderError(f"no complete bars for {ticker} after dropping partial rows")
+    return df
 
 
 class FixtureProvider:

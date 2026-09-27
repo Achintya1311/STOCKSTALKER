@@ -43,6 +43,44 @@ def test_empty_frame_is_an_error_not_an_empty_result():
         providers._normalise(pd.DataFrame(), "X.NS")
 
 
+def test_normalise_drops_a_row_with_any_nan_field_not_just_all_nan():
+    """A still-forming session (yfinance's most recent bar mid-day, or a
+    corrupted row) can have some OHLCV fields populated and one - often
+    close - still NaN. That row is not a completed trading day and must not
+    survive: dropping only fully-NaN rows (``how="all"``) let exactly this
+    kind of row through and broke a downstream ``close > 0`` check on live
+    data (the incomplete bar's close was NaN, everything else present).
+    """
+    df = pd.DataFrame(
+        {
+            "open": [100.0, 101.0],
+            "high": [102.0, 103.0],
+            "low": [99.0, 100.0],
+            "close": [101.0, float("nan")],
+            "volume": [1000, 500],
+        },
+        index=pd.to_datetime(["2026-01-01", "2026-01-02"]),
+    )
+    out = providers._normalise(df, "X.NS")
+    assert len(out) == 1
+    assert out.index[0] == pd.Timestamp("2026-01-01")
+
+
+def test_normalise_raises_if_every_row_is_partial():
+    df = pd.DataFrame(
+        {
+            "open": [100.0],
+            "high": [102.0],
+            "low": [99.0],
+            "close": [float("nan")],
+            "volume": [1000],
+        },
+        index=pd.to_datetime(["2026-01-01"]),
+    )
+    with pytest.raises(ProviderError, match="no complete bars"):
+        providers._normalise(df, "X.NS")
+
+
 def test_multiindex_columns_are_flattened():
     """yfinance hands back a MultiIndex even for a single ticker sometimes."""
     idx = pd.to_datetime(["2026-01-01"])
