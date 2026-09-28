@@ -87,6 +87,24 @@ def test_render_screen_table_adds_risk_columns_only_when_a_candidate_has_them(sc
     assert "-10.82%" in text_with
 
 
+def test_render_screen_table_adds_vol_columns_only_when_a_candidate_has_them(screen):
+    text_without = render(report.render_screen_table(screen))
+    assert "ATM IV(30d)" not in text_without
+
+    gated = dict(screen)
+    gated["candidates"] = [dict(c) for c in screen["candidates"]]
+    gated["candidates"][0]["vol"] = {
+        "atm_iv_30d": 0.2150,
+        "skew_25d": 0.0108,
+        "term_slope": -0.0199,
+        "iv_rank_1y": None,
+    }
+    text_with = render(report.render_screen_table(gated))
+    assert "ATM IV(30d)" in text_with
+    assert "21.50%" in text_with
+    assert "+0.0108" in text_with
+
+
 def test_render_backtest_table_lists_every_result(backtest_report):
     text = render(report.render_backtest_table(backtest_report))
     assert "beat buy-and-hold" in text
@@ -244,3 +262,33 @@ def test_main_applies_the_real_reliance_sizing_contract_and_reports_a_match(tmp_
     assert "Weight" in out
     assert "50.00%" in out
     assert "Energy" in out
+
+
+def test_main_requires_both_vol_flags_together(tmp_path):
+    with pytest.raises(SystemExit):
+        report.main(["--output-dir", str(tmp_path), "--vol-ticker", "RELIANCE.NS"])
+
+
+def test_main_applies_the_real_reliance_vol_contract_and_reports_a_match(tmp_path, capsys):
+    """End to end against implied-vol-surface's actual fixture output: like the v0.3
+    risk gate's and v0.4 sizing gate's RELIANCE (and unlike the v0.7 valuation gate's
+    GULFOILLUB, outside this repo's universe), RELIANCE.NS is one of this repo's own
+    three universe tickers, so this is a genuine match."""
+    contract = ROOT_FIXTURES / "vol" / "RELIANCE.json"
+    exit_code = report.main(
+        [
+            "--output-dir", str(tmp_path),
+            "--date", "2026-09-07",
+            "--no-charts",
+            "--vol-contract", str(contract),
+            "--vol-ticker", "RELIANCE",
+        ]
+    )
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "attached implied-vol-surface's contract for RELIANCE" in out
+    # Column headers/values can wrap or truncate depending on the terminal width rich
+    # detects (narrow in a captured, non-tty test run) -- assert on fragments that
+    # survive either way, same approach the risk/sizing gates' tests above use.
+    assert "ATM" in out
+    assert "21.50%" in out

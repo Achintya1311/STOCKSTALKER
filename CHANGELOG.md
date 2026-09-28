@@ -1,5 +1,51 @@
 # Changelog
 
+## v0.6 vol gate (package v0.7.4) — 2026-09-28
+
+Options-implied risk signal on the screen. implied-vol-surface finished its 8-day plan
+out of pipeline order, behind reverse-dcf-engine (v0.7), monte-carlo-risk-lab (v0.3),
+fama-french-factor-model (v0.2) and markowitz-portfolio-optimizer (v0.4) rather than
+ahead of them — the release-track label stays v0.6 (pipeline position), but this
+repo's own package version cannot honestly move backward from 0.7.3 to reflect that,
+since v0.7/v0.3/v0.2/v0.4's gates are all still present and this adds to them, not
+replaces them. Bumping to another patch release (0.7.4), the same deviation the three
+prior integrations' changelog entries already recorded.
+
+**Ships:**
+- `stockstalker.gates.vol` — reads implied-vol-surface's file contract
+  (`{"vol": {"atm_iv_30d", "skew_25d", "term_slope", "iv_rank_1y"}}`, written by that
+  repo's `python -m volsurface.history --contract ...`) and attaches it to the one
+  screen candidate whose ticker matches, under the `vol` key `schema/v1.json` already
+  reserves. Every other candidate passes through unchanged; a ticker outside the
+  current universe is a reported non-match, not an error — same shape as every other
+  gate in this repo.
+- `stockstalker.report` — new `--vol-contract`/`--vol-ticker` flags apply the gate
+  before rendering; the screen table grows two columns (ATM IV(30d), Skew(25d)) only
+  when at least one candidate actually carries a vol block.
+
+**Verified before tagging:**
+- `pytest` — 214 passed (16 new: contract loading/matching in `stockstalker.gates.vol`,
+  the report table/CLI wiring)
+- `python -m stockstalker.gates.vol --screen <screen.json> --contract
+  fixtures/vol/RELIANCE.json --ticker RELIANCE` — run against the real
+  implied-vol-surface fixture output, and again with a ticker outside the universe
+- `python -m stockstalker.report --offline --vol-contract fixtures/vol/RELIANCE.json
+  --vol-ticker RELIANCE` — end to end
+
+**Like v0.3's, v0.2's and v0.4's real matches, unlike v0.7's GULFOILLUB non-match:**
+implied-vol-surface's fixture is built around RELIANCE, one of this repo's own three
+universe tickers, so this is a genuine end-to-end match, not a synthetic stand-in.
+
+**Honest partial ship, the same documented-gap pattern v0.2's and v0.3's version-order
+deviations already recorded:** `atm_iv_30d`, `skew_25d` and `term_slope` are real
+numbers computed from implied-vol-surface's own fitted surface and 25-delta skew.
+`iv_rank_1y` ships `null` — that repo's own history has never accumulated more than one
+distinct trading day (its only working data path is a fixture whose `data_date` never
+advances), so there is no real trailing-year window for a percentile to rank against.
+`stockstalker.gates.vol.load_contract` requires the key be present, not that it be
+non-null, and passes `null` straight through rather than inventing a number — see both
+repos' Limitations sections.
+
 ## v0.4 sizing gate (package v0.7.3) — 2026-09-25
 
 Optimizer-driven position sizing on the screen. markowitz-portfolio-optimizer finished

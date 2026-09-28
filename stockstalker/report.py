@@ -28,6 +28,7 @@ from .gates.factor import apply_factor_gate, load_contract as load_factor_contra
 from .gates.risk import apply_risk_gate, load_contract as load_risk_contract
 from .gates.sizing import apply_sizing_gate, load_contract as load_sizing_contract
 from .gates.valuation import apply_valuation_gate, load_contract as load_valuation_contract
+from .gates.vol import apply_vol_gate, load_contract as load_vol_contract
 from .screener import CONFIG_PATH, UNIVERSE_PATH, build_screen, load_config, load_universe
 from .viz.liquidity import plot_liquidity_heatmap
 
@@ -40,15 +41,17 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
 
     Adds a Valuation column (v0.7, reverse-dcf-engine's implied vs. breakeven
     growth), a Factor column (v0.2, fama-french-factor-model's alpha vs.
-    market loading) and a Weight/Constraint column (v0.4, markowitz-
-    portfolio-optimizer's sector-capped position size) only when at least
-    one candidate carries that key — most runs have none, since a gate only
-    attaches it to the one ticker a satellite has actually researched.
+    market loading), a Weight/Constraint column (v0.4, markowitz-
+    portfolio-optimizer's sector-capped position size) and an ATM IV/Skew
+    column (v0.6, implied-vol-surface's options-implied signal) only when at
+    least one candidate carries that key — most runs have none, since a gate
+    only attaches it to the one ticker a satellite has actually researched.
     """
     has_valuation = any("valuation" in c for c in screen["candidates"])
     has_risk = any("risk" in c for c in screen["candidates"])
     has_factor = any("factor" in c for c in screen["candidates"])
     has_sizing = any("sizing" in c for c in screen["candidates"])
+    has_vol = any("vol" in c for c in screen["candidates"])
     table = Table(title=f"Screen — {screen['generated']} ({screen['universe']}, {screen['source']})")
     table.add_column("Rank", justify="right")
     table.add_column("Ticker")
@@ -70,6 +73,9 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
     if has_sizing:
         table.add_column("Weight")
         table.add_column("Constraint")
+    if has_vol:
+        table.add_column("ATM IV(30d)")
+        table.add_column("Skew(25d)")
     for c in screen["candidates"]:
         s = c["signals"]
         row = [
@@ -98,6 +104,10 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
             sz = c.get("sizing")
             row.append(f"{sz['weight']:.2%}" if sz else "-")
             row.append(sz["constraint_binding"] if sz else "-")
+        if has_vol:
+            vol = c.get("vol")
+            row.append(f"{vol['atm_iv_30d']:.2%}" if vol and vol["atm_iv_30d"] is not None else "-")
+            row.append(f"{vol['skew_25d']:+.4f}" if vol and vol["skew_25d"] is not None else "-")
         table.add_row(*row)
     return table
 
@@ -201,6 +211,17 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="the ticker --sizing-contract was solved for",
     )
+    parser.add_argument(
+        "--vol-contract",
+        default=None,
+        help="v0.6 gate: path to an implied-vol-surface --contract JSON file to attach to the "
+        "matching candidate (requires --vol-ticker)",
+    )
+    parser.add_argument(
+        "--vol-ticker",
+        default=None,
+        help="the ticker --vol-contract was solved for",
+    )
     args = parser.parse_args(argv)
 
     if bool(args.valuation_contract) != bool(args.valuation_ticker):
@@ -214,6 +235,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if bool(args.sizing_contract) != bool(args.sizing_ticker):
         parser.error("--sizing-contract and --sizing-ticker must be given together")
+
+    if bool(args.vol_contract) != bool(args.vol_ticker):
+        parser.error("--vol-contract and --vol-ticker must be given together")
 
     if args.live and args.offline:
         parser.error("--live and --offline are mutually exclusive")
@@ -278,6 +302,18 @@ def main(argv: list[str] | None = None) -> int:
         else:
             console.print(
                 f"sizing gate: {args.sizing_ticker} is not in this screen's universe -- no candidate updated"
+            )
+
+    if args.vol_contract:
+        vol = load_vol_contract(args.vol_contract)
+        screen, matched = apply_vol_gate(screen, args.vol_ticker, vol)
+        if matched:
+            console.print(
+                f"vol gate: attached implied-vol-surface's contract for {args.vol_ticker}"
+            )
+        else:
+            console.print(
+                f"vol gate: {args.vol_ticker} is not in this screen's universe -- no candidate updated"
             )
 
     console.print(render_screen_table(screen))
