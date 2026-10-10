@@ -1,6 +1,6 @@
 [project]
 name = "stockstalker"
-version = "0.7.4"
+version = "0.7.5"
 description = "Screens the NSE universe down to a shortlist worth researching. CLI only."
 requires-python = ">=3.10"
 dependencies = [

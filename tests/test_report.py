@@ -105,6 +105,23 @@ def test_render_screen_table_adds_vol_columns_only_when_a_candidate_has_them(scr
     assert "+0.0108" in text_with
 
 
+def test_render_screen_table_adds_sentiment_columns_only_when_a_candidate_has_them(screen):
+    text_without = render(report.render_screen_table(screen))
+    assert "Sent. score(7d)" not in text_without
+
+    gated = dict(screen)
+    gated["candidates"] = [dict(c) for c in screen["candidates"]]
+    gated["candidates"][0]["sentiment"] = {
+        "score_7d": 0.296,
+        "headline_count_7d": 1,
+        "model": "vader",
+        "coverage": "partial",
+    }
+    text_with = render(report.render_screen_table(gated))
+    assert "Sent. score(7d)" in text_with
+    assert "+0.296" in text_with
+
+
 def test_render_backtest_table_lists_every_result(backtest_report):
     text = render(report.render_backtest_table(backtest_report))
     assert "beat buy-and-hold" in text
@@ -292,3 +309,47 @@ def test_main_applies_the_real_reliance_vol_contract_and_reports_a_match(tmp_pat
     # survive either way, same approach the risk/sizing gates' tests above use.
     assert "ATM" in out
     assert "21.50%" in out
+
+
+def test_main_requires_both_sentiment_flags_together(tmp_path):
+    with pytest.raises(SystemExit):
+        report.main(["--output-dir", str(tmp_path), "--sentiment-ticker", "RELIANCE.NS"])
+
+
+def test_main_applies_the_real_infy_sentiment_contract_and_reports_no_match(tmp_path, capsys):
+    """End to end against headline-sentiment-vs-price's actual fixture output: like the
+    v0.7 valuation gate's GULFOILLUB, INFY.NS isn't in this repo's 3-ticker universe
+    (RELIANCE/TATACHEM/CROMPTON), so the honest outcome is no match, printed as such."""
+    contract = ROOT_FIXTURES / "sentiment" / "INFY.json"
+    exit_code = report.main(
+        [
+            "--output-dir", str(tmp_path),
+            "--date", "2026-09-29",
+            "--no-charts",
+            "--sentiment-contract", str(contract),
+            "--sentiment-ticker", "INFY.NS",
+        ]
+    )
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "is not in this screen's universe" in out
+    assert "Sent. score(7d)" not in out
+
+
+def test_main_attaches_sentiment_when_the_ticker_matches_the_universe(tmp_path, capsys):
+    contract = tmp_path / "contract.json"
+    contract.write_text(
+        '{"sentiment": {"score_7d": 0.31, "headline_count_7d": 12, "model": "finbert", "coverage": "partial"}}'
+    )
+    exit_code = report.main(
+        [
+            "--output-dir", str(tmp_path),
+            "--date", "2026-09-29",
+            "--no-charts",
+            "--sentiment-contract", str(contract),
+            "--sentiment-ticker", "RELIANCE.NS",
+        ]
+    )
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "attached headline-sentiment-vs-price's contract for RELIANCE.NS" in out

@@ -1,0 +1,8 @@
+{
+  "sentiment": {
+    "score_7d": 0.296,
+    "headline_count_7d": 1,
+    "model": "vader",
+    "coverage": "partial"
+  }
+}

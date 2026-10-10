@@ -1,5 +1,54 @@
 # Changelog
 
+## v0.5 sentiment gate (package v0.7.5) — 2026-10-10
+
+Headline sentiment overlay on the screen. headline-sentiment-vs-price finished its
+8-day plan out of pipeline order, behind reverse-dcf-engine (v0.7), monte-carlo-
+risk-lab (v0.3), fama-french-factor-model (v0.2), markowitz-portfolio-optimizer (v0.4)
+and implied-vol-surface (v0.6) rather than ahead of them — the release-track label
+stays v0.5 (pipeline position), but this repo's own package version cannot honestly
+move backward from 0.7.4 to reflect that, since v0.7/v0.3/v0.2/v0.4/v0.6's gates are
+all still present and this adds to them, not replaces them. Bumping to another patch
+release (0.7.5), the same deviation the five prior integrations' changelog entries
+already recorded.
+
+**Ships:**
+- `stockstalker.gates.sentiment` — reads headline-sentiment-vs-price's file contract
+  (`{"sentiment": {"score_7d", "headline_count_7d", "model", "coverage"}}`, written by
+  that repo's new `python -m sentiment.contract --ticker ... --contract ...`) and
+  attaches it to the one screen candidate whose ticker matches, under the `sentiment`
+  key `schema/v1.json` already reserves. Every other candidate passes through
+  unchanged; a ticker outside the current universe is a reported non-match, not an
+  error — same shape as every other gate in this repo.
+- `stockstalker.report` — new `--sentiment-contract`/`--sentiment-ticker` flags apply
+  the gate before rendering; the screen table grows two columns (Sent. score(7d),
+  Headlines(7d)) only when at least one candidate actually carries a sentiment block.
+
+**Verified before tagging:**
+- `pytest` — 229 passed (15 new: contract loading/matching in
+  `stockstalker.gates.sentiment`, the report table/CLI wiring)
+- `python -m stockstalker.gates.sentiment --screen <screen.json> --contract
+  fixtures/sentiment/INFY.json --ticker INFY.NS` — run against the real
+  headline-sentiment-vs-price fixture output, and again with a synthetic contract
+  against a universe ticker (RELIANCE.NS) to exercise the matching path
+- `python -m stockstalker.report --offline --sentiment-contract
+  fixtures/sentiment/INFY.json --sentiment-ticker INFY.NS` — end to end
+
+**Like v0.7's GULFOILLUB non-match, unlike v0.3/v0.2/v0.4/v0.6's real matches:**
+headline-sentiment-vs-price's 50-headline fixture resolves 23 headlines to 23 NSE
+tickers (Infosys, Wipro, HDFC Bank, and so on), and none of them is RELIANCE, TATACHEM
+or CROMPTON — this repo's own 3-ticker universe. The real integration produces zero
+matches end to end. The gate logic is fully exercised by tests against a synthetic
+contract keyed to a universe ticker (`RELIANCE.NS`), and the real, honest non-match
+is itself tested end to end too — both repos' READMEs record this the same way v0.7's
+entry does.
+
+**Model deviation, recorded by both repos:** the sentiment contract shape
+NEXT_STEPS.md committed to before this integration shows `"model": "finbert"` as its
+example value. FinBERT cannot run in this sandbox (no `torch`, a gap every checkpoint
+since that repo's Day 3 has documented), so the contract this integration actually
+ships reports `"model": "vader"` instead — an honest substitution, not a silent one.
+
 ## v0.6 vol gate (package v0.7.4) — 2026-09-28
 
 Options-implied risk signal on the screen. implied-vol-surface finished its 8-day plan
