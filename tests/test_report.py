@@ -122,6 +122,24 @@ def test_render_screen_table_adds_sentiment_columns_only_when_a_candidate_has_th
     assert "+0.296" in text_with
 
 
+def test_render_screen_table_adds_fundamentals_columns_only_when_a_candidate_has_them(screen):
+    text_without = render(report.render_screen_table(screen))
+    assert "Rev. CAGR(FY3)" not in text_without
+
+    gated = dict(screen)
+    gated["candidates"] = [dict(c) for c in screen["candidates"]]
+    gated["candidates"][0]["fundamentals"] = {
+        "fy3_revenue_cagr": 0.1539,
+        "fy3_ebit_margin": 0.1282,
+        "net_debt_ebitda_fy3": -1.6879,
+        "balance_check": "passed",
+    }
+    text_with = render(report.render_screen_table(gated))
+    assert "Rev. CAGR(FY3)" in text_with
+    assert "+15.39%" in text_with
+    assert "-1.69" in text_with
+
+
 def test_render_backtest_table_lists_every_result(backtest_report):
     text = render(report.render_backtest_table(backtest_report))
     assert "beat buy-and-hold" in text
@@ -353,3 +371,48 @@ def test_main_attaches_sentiment_when_the_ticker_matches_the_universe(tmp_path, 
     assert exit_code == 0
     out = capsys.readouterr().out
     assert "attached headline-sentiment-vs-price's contract for RELIANCE.NS" in out
+
+
+def test_main_requires_both_fundamentals_flags_together(tmp_path):
+    with pytest.raises(SystemExit):
+        report.main(["--output-dir", str(tmp_path), "--fundamentals-ticker", "RELIANCE.NS"])
+
+
+def test_main_applies_the_real_gulfoillub_fundamentals_contract_and_reports_no_match(tmp_path, capsys):
+    """End to end against three-statement-model's actual fixture output: like the v0.7
+    valuation gate's GULFOILLUB, this ticker isn't in this repo's 3-ticker universe
+    (RELIANCE/TATACHEM/CROMPTON), so the honest outcome is no match, printed as such."""
+    contract = ROOT_FIXTURES / "fundamentals" / "GULFOILLUB.json"
+    exit_code = report.main(
+        [
+            "--output-dir", str(tmp_path),
+            "--date", "2026-10-11",
+            "--no-charts",
+            "--fundamentals-contract", str(contract),
+            "--fundamentals-ticker", "GULFOILLUB",
+        ]
+    )
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "is not in this screen's universe" in out
+    assert "Rev. CAGR(FY3)" not in out
+
+
+def test_main_attaches_fundamentals_when_the_ticker_matches_the_universe(tmp_path, capsys):
+    contract = tmp_path / "contract.json"
+    contract.write_text(
+        '{"fundamentals": {"fy3_revenue_cagr": 0.11, "fy3_ebit_margin": 0.19, '
+        '"net_debt_ebitda_fy3": 1.8, "balance_check": "passed"}}'
+    )
+    exit_code = report.main(
+        [
+            "--output-dir", str(tmp_path),
+            "--date", "2026-10-11",
+            "--no-charts",
+            "--fundamentals-contract", str(contract),
+            "--fundamentals-ticker", "RELIANCE.NS",
+        ]
+    )
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "attached three-statement-model's contract for RELIANCE.NS" in out

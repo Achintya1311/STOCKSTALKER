@@ -1,5 +1,48 @@
 # Changelog
 
+## v0.8 fundamentals gate (package v0.8.0) — 2026-10-11
+
+Fundamental quality gate on survivors. three-statement-model finished its 8-day plan
+in pipeline order this time — v0.2 (fama-french-factor-model), v0.3 (monte-carlo-
+risk-lab), v0.4 (markowitz-portfolio-optimizer), v0.5 (headline-sentiment-vs-price),
+v0.6 (implied-vol-surface) and v0.7 (reverse-dcf-engine) are all already shipped, so
+unlike every integration since v0.3, there is no out-of-order deviation to record:
+the package version bumps cleanly from 0.7.5 straight to 0.8.0.
+
+**Ships:**
+- `stockstalker.gates.fundamentals` — reads three-statement-model's file contract
+  (`{"fundamentals": {"fy3_revenue_cagr", "fy3_ebit_margin", "net_debt_ebitda_fy3",
+  "balance_check"}}`, written by that repo's new `python -m model.statements
+  --contract ...`, requires `--forecast-years >= 3` and a passing balance check) and
+  attaches it to the one screen candidate whose ticker matches, under the
+  `fundamentals` key `schema/v1.json` already reserves. Every other candidate passes
+  through unchanged; a ticker outside the current universe is a reported non-match,
+  not an error — same shape as every other gate in this repo.
+- `stockstalker.report` — new `--fundamentals-contract`/`--fundamentals-ticker` flags
+  apply the gate before rendering; the screen table grows two columns
+  (Rev. CAGR(FY3), Net debt/EBITDA(FY3)) only when at least one candidate actually
+  carries a fundamentals block.
+
+**Verified before tagging:**
+- `pytest` — 245 passed (16 new: contract loading/matching in
+  `stockstalker.gates.fundamentals`, the report table/CLI wiring)
+- `python -m stockstalker.gates.fundamentals --screen <screen.json> --contract
+  fixtures/fundamentals/GULFOILLUB.json --ticker GULFOILLUB` — run against the real
+  three-statement-model fixture output, and again with a synthetic contract against a
+  universe ticker (RELIANCE.NS) to exercise the matching path
+- `python -m stockstalker.report --offline --fundamentals-contract
+  fixtures/fundamentals/GULFOILLUB.json --fundamentals-ticker GULFOILLUB` — end to end
+
+**Like v0.7's GULFOILLUB non-match and v0.5's INFY non-match, unlike v0.3/v0.2/v0.4/v0.6's
+real matches:** three-statement-model researched the same company reverse-dcf-engine
+did (Gulf Oil Lubricants India, GULFOILLUB), which is not in this repo's 3-ticker
+fixture universe (RELIANCE, TATACHEM, CROMPTON). The real integration produces zero
+matches; the gate is fully tested against a synthetic matching contract, but the real
+contract's actual numbers (`fy3_revenue_cagr: +15.39%`, `fy3_ebit_margin: 12.82%`,
+`net_debt_ebitda_fy3: -1.69`, `balance_check: "passed"`) have not actually attached to
+a live candidate yet — an honest result of two satellites built independently against
+their own fixture sets, not a bug.
+
 ## v0.5 sentiment gate (package v0.7.5) — 2026-10-10
 
 Headline sentiment overlay on the screen. headline-sentiment-vs-price finished its

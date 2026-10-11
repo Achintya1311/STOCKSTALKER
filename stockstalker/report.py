@@ -25,6 +25,7 @@ from rich.table import Table
 from .backtest import DEFAULT_THRESHOLD, run_backtest
 from .data.providers import ProviderError, load
 from .gates.factor import apply_factor_gate, load_contract as load_factor_contract
+from .gates.fundamentals import apply_fundamentals_gate, load_contract as load_fundamentals_contract
 from .gates.risk import apply_risk_gate, load_contract as load_risk_contract
 from .gates.sentiment import apply_sentiment_gate, load_contract as load_sentiment_contract
 from .gates.sizing import apply_sizing_gate, load_contract as load_sizing_contract
@@ -44,11 +45,13 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
     growth), a Factor column (v0.2, fama-french-factor-model's alpha vs.
     market loading), a Weight/Constraint column (v0.4, markowitz-
     portfolio-optimizer's sector-capped position size), an ATM IV/Skew
-    column (v0.6, implied-vol-surface's options-implied signal) and a
+    column (v0.6, implied-vol-surface's options-implied signal), a
     Sentiment column (v0.5, headline-sentiment-vs-price's trailing-7-day
-    VADER score and headline count) only when at least one candidate
-    carries that key — most runs have none, since a gate only attaches it
-    to the one ticker a satellite has actually researched.
+    VADER score and headline count) and a Rev. CAGR/Net debt-EBITDA column
+    (v0.8, three-statement-model's FY3 revenue CAGR and net debt/EBITDA)
+    only when at least one candidate carries that key — most runs have
+    none, since a gate only attaches it to the one ticker a satellite has
+    actually researched.
     """
     has_valuation = any("valuation" in c for c in screen["candidates"])
     has_risk = any("risk" in c for c in screen["candidates"])
@@ -56,6 +59,7 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
     has_sizing = any("sizing" in c for c in screen["candidates"])
     has_vol = any("vol" in c for c in screen["candidates"])
     has_sentiment = any("sentiment" in c for c in screen["candidates"])
+    has_fundamentals = any("fundamentals" in c for c in screen["candidates"])
     table = Table(title=f"Screen — {screen['generated']} ({screen['universe']}, {screen['source']})")
     table.add_column("Rank", justify="right")
     table.add_column("Ticker")
@@ -83,6 +87,9 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
     if has_sentiment:
         table.add_column("Sent. score(7d)")
         table.add_column("Headlines(7d)")
+    if has_fundamentals:
+        table.add_column("Rev. CAGR(FY3)")
+        table.add_column("Net debt/EBITDA(FY3)")
     for c in screen["candidates"]:
         s = c["signals"]
         row = [
@@ -119,6 +126,10 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
             sent = c.get("sentiment")
             row.append(f"{sent['score_7d']:+.3f}" if sent and sent["score_7d"] is not None else "-")
             row.append(str(sent["headline_count_7d"]) if sent else "-")
+        if has_fundamentals:
+            fnd = c.get("fundamentals")
+            row.append(f"{fnd['fy3_revenue_cagr']:+.2%}" if fnd else "-")
+            row.append(f"{fnd['net_debt_ebitda_fy3']:+.2f}" if fnd else "-")
         table.add_row(*row)
     return table
 
@@ -244,6 +255,17 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="the ticker --sentiment-contract was built for",
     )
+    parser.add_argument(
+        "--fundamentals-contract",
+        default=None,
+        help="v0.8 gate: path to a three-statement-model --contract JSON file to attach to the "
+        "matching candidate (requires --fundamentals-ticker)",
+    )
+    parser.add_argument(
+        "--fundamentals-ticker",
+        default=None,
+        help="the ticker --fundamentals-contract was built for",
+    )
     args = parser.parse_args(argv)
 
     if bool(args.valuation_contract) != bool(args.valuation_ticker):
@@ -263,6 +285,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if bool(args.sentiment_contract) != bool(args.sentiment_ticker):
         parser.error("--sentiment-contract and --sentiment-ticker must be given together")
+
+    if bool(args.fundamentals_contract) != bool(args.fundamentals_ticker):
+        parser.error("--fundamentals-contract and --fundamentals-ticker must be given together")
 
     if args.live and args.offline:
         parser.error("--live and --offline are mutually exclusive")
@@ -351,6 +376,18 @@ def main(argv: list[str] | None = None) -> int:
         else:
             console.print(
                 f"sentiment gate: {args.sentiment_ticker} is not in this screen's universe -- no candidate updated"
+            )
+
+    if args.fundamentals_contract:
+        fundamentals = load_fundamentals_contract(args.fundamentals_contract)
+        screen, matched = apply_fundamentals_gate(screen, args.fundamentals_ticker, fundamentals)
+        if matched:
+            console.print(
+                f"fundamentals gate: attached three-statement-model's contract for {args.fundamentals_ticker}"
+            )
+        else:
+            console.print(
+                f"fundamentals gate: {args.fundamentals_ticker} is not in this screen's universe -- no candidate updated"
             )
 
     console.print(render_screen_table(screen))
