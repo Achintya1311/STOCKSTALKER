@@ -11,6 +11,7 @@ from stockstalker.gates import sentiment
 
 ROOT = Path(__file__).resolve().parent.parent
 INFY_CONTRACT = ROOT / "fixtures" / "sentiment" / "INFY.json"
+FORTIS_CONTRACT = ROOT / "fixtures" / "sentiment" / "FORTIS.json"
 
 # headline-sentiment-vs-price's own tests cover how this number is derived;
 # here it's just an opaque payload this repo passes through.
@@ -155,3 +156,35 @@ def test_main_defaults_out_to_overwriting_the_screen_in_place(screen, tmp_path):
     gated = json.loads(screen_path.read_text())
     by_ticker = {c["ticker"]: c for c in gated["candidates"]}
     assert by_ticker["TATACHEM.NS"]["sentiment"] == SYNTHETIC_SENTIMENT
+
+
+def test_load_contract_accepts_a_present_but_null_score_7d(tmp_path):
+    """A missing key is rejected; a present key with value null (the honest
+    no-headlines outcome that repo's CLI ships for an unresolved ticker) is
+    not the same thing and must be accepted."""
+    ok = tmp_path / "ok.json"
+    ok.write_text(json.dumps({"sentiment": {**SYNTHETIC_SENTIMENT, "score_7d": None, "coverage": "none"}}))
+    loaded = sentiment.load_contract(ok)
+    assert loaded["score_7d"] is None
+
+
+def test_main_against_the_real_fortis_fixture_reports_no_match_honestly(screen, tmp_path, capsys):
+    """End-to-end against the actual headline-sentiment-vs-price output: FORTIS.NS isn't
+    in this repo's fixture universe (RELIANCE/TATACHEM/CROMPTON), so the honest result is
+    zero matches, not a fabricated one -- the same shape v0.7's GULFOILLUB non-match took."""
+    screen_path = tmp_path / "screen.json"
+    screen_path.write_text(json.dumps(screen))
+
+    exit_code = sentiment.main(
+        [
+            "--screen", str(screen_path),
+            "--contract", str(FORTIS_CONTRACT),
+            "--ticker", "FORTIS.NS",
+        ]
+    )
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "is not in this screen's universe" in out
+
+    unchanged = json.loads(screen_path.read_text())
+    assert all("sentiment" not in c for c in unchanged["candidates"])
