@@ -324,3 +324,91 @@ def test_cli_end_to_end_includes_contract_sections(tmp_path):
     assert "balance_check" in text
     assert "Not available" in text
     assert "sizing" in text.lower()
+
+
+# -- Day 7: rebased/drawdown/volatility charts -------------------------------
+
+
+def test_write_charts_writes_three_pngs(tmp_path):
+    paths = run.write_charts("GULFOILLUB", run.DEFAULT_PEERS, "fixtures", tmp_path)
+    assert len(paths) == 3
+    for path in paths:
+        assert path.exists()
+        assert path.stat().st_size > 0
+    names = {p.name for p in paths}
+    assert names == {
+        "rebased_GULFOILLUB.png",
+        "drawdown_GULFOILLUB.png",
+        "volatility_GULFOILLUB.png",
+    }
+
+
+def test_write_charts_records_peer_fetch_errors_without_raising(tmp_path):
+    errors = []
+    paths = run.write_charts("GULFOILLUB", ["NOPE"], "fixtures", tmp_path, errors)
+    # The rebased chart still renders with just the subject; a missing peer
+    # is recorded, not fatal.
+    assert len(paths) == 3
+    assert len(errors) == 1
+    assert "NOPE" in errors[0]
+
+
+def test_write_charts_returns_nothing_when_subject_itself_fails(tmp_path):
+    errors = []
+    paths = run.write_charts("NOPE", run.DEFAULT_PEERS, "fixtures", tmp_path, errors)
+    assert paths == []
+    assert any("NOPE" in e for e in errors)
+
+
+def test_write_tearsheet_lists_chart_files(cfg, tmp_path):
+    subject = run.build_subject_section("GULFOILLUB", "fixtures", cfg)
+    peer_rows = run.build_peer_table(["GULFOILLUB", *run.DEFAULT_PEERS], "fixtures")
+    chart_paths = run.write_charts("GULFOILLUB", run.DEFAULT_PEERS, "fixtures", tmp_path)
+    path = tmp_path / "tearsheet.md"
+    run.write_tearsheet(subject, peer_rows, "2026-10-12", path, chart_paths=chart_paths)
+    text = path.read_text()
+    assert "## Charts" in text
+    assert "rebased_GULFOILLUB.png" in text
+    assert "drawdown_GULFOILLUB.png" in text
+    assert "volatility_GULFOILLUB.png" in text
+
+
+def test_cli_end_to_end_writes_charts_by_default(tmp_path, capsys):
+    rc = run.main(
+        [
+            "--ticker",
+            "GULFOILLUB",
+            "--offline",
+            "--date",
+            "2026-10-12",
+            "--output-dir",
+            str(tmp_path),
+        ]
+    )
+    assert rc == 0
+    assert (tmp_path / "rebased_GULFOILLUB.png").exists()
+    assert (tmp_path / "drawdown_GULFOILLUB.png").exists()
+    assert (tmp_path / "volatility_GULFOILLUB.png").exists()
+    text = (tmp_path / "tearsheet_GULFOILLUB_2026-10-12.md").read_text()
+    assert "## Charts" in text
+    captured = capsys.readouterr()
+    assert "chart:" in captured.out
+
+
+def test_cli_no_charts_skips_png_output(tmp_path):
+    rc = run.main(
+        [
+            "--ticker",
+            "GULFOILLUB",
+            "--offline",
+            "--date",
+            "2026-10-12",
+            "--output-dir",
+            str(tmp_path),
+            "--no-charts",
+        ]
+    )
+    assert rc == 0
+    assert not (tmp_path / "rebased_GULFOILLUB.png").exists()
+    text = (tmp_path / "tearsheet_GULFOILLUB_2026-10-12.md").read_text()
+    assert "## Charts" not in text

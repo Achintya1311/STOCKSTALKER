@@ -53,6 +53,7 @@ from .gates import sentiment as gate_sentiment
 from .gates import valuation as gate_valuation
 from .gates import vol as gate_vol
 from .screener import CONFIG_PATH, blended_score, compute_signals, liquidity_metrics, load_config
+from .viz import charts as viz_charts
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = ROOT / "outputs"
@@ -148,6 +149,40 @@ def build_peer_table(
             }
         )
     return rows
+
+
+def write_charts(
+    subject_ticker: str,
+    peer_tickers: list[str],
+    provider_name: str,
+    output_dir: Path,
+    errors: list[str] | None = None,
+) -> list[Path]:
+    """Day 7: rebased comparison, subject drawdown, subject rolling volatility.
+
+    A ticker (subject or peer) whose fixture fails to load is skipped and
+    recorded in ``errors``, the same shape ``build_peer_table`` already
+    uses -- never silently dropped. The subject must load for any chart to
+    be produced; a peer failing only shrinks the rebased comparison.
+    """
+    if errors is None:
+        errors = []
+    frames: dict[str, Any] = {}
+    for ticker in [subject_ticker, *peer_tickers]:
+        yf_ticker = to_yf_ticker(ticker)
+        try:
+            frames[ticker.upper()] = load(yf_ticker, provider=provider_name)
+        except ProviderError as exc:
+            errors.append(f"{ticker}: {exc}")
+
+    subject = subject_ticker.upper()
+    if subject not in frames:
+        return []
+
+    paths = [viz_charts.plot_rebased_comparison(frames, subject, output_dir=output_dir)]
+    paths.append(viz_charts.plot_drawdown(frames[subject], subject, output_dir=output_dir))
+    paths.append(viz_charts.plot_rolling_volatility(frames[subject], subject, output_dir=output_dir))
+    return paths
 
 
 def _fmt_pct(value: float | None) -> str:
@@ -300,6 +335,7 @@ def write_tearsheet(
     generated: str,
     path: Path,
     contract_sections: list[dict[str, Any]] | None = None,
+    chart_paths: list[Path] | None = None,
 ) -> None:
     s = subject["signals"]
     lines = [
@@ -324,6 +360,11 @@ def write_tearsheet(
             f"| {r['adv_20d']:,.0f} |"
         )
     lines += ["", *contract_sections_markdown(contract_sections or [])]
+    if chart_paths:
+        lines += ["## Charts", ""]
+        for chart_path in chart_paths:
+            lines.append(f"- `{chart_path.name}`")
+        lines.append("")
     path.write_text("\n".join(lines) + "\n")
 
 
@@ -344,6 +385,11 @@ def main(argv: list[str] | None = None) -> int:
         "--offline", action="store_true", help="explicit fixtures path (already the default)"
     )
     parser.add_argument("--date", default=None, help="override the generated date (mainly for tests)")
+    parser.add_argument(
+        "--no-charts",
+        action="store_true",
+        help="skip writing the rebased/drawdown/volatility PNGs",
+    )
     args = parser.parse_args(argv)
 
     if args.live and args.offline:
@@ -368,15 +414,23 @@ def main(argv: list[str] | None = None) -> int:
 
     console.print(render_subject_table(subject))
     console.print(render_peer_table(peer_rows))
-    for e in errors:
-        console.print(f"[red]![/red] {e}")
     for section in contract_sections:
         console.print(render_contract_section(section))
 
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    chart_paths: list[Path] = []
+    if not args.no_charts:
+        chart_paths = write_charts(args.ticker, peers, provider_name, out_dir, errors)
+        for chart_path in chart_paths:
+            console.print(f"chart: {chart_path}")
+
+    for e in errors:
+        console.print(f"[red]![/red] {e}")
+
     tearsheet_path = out_dir / f"tearsheet_{subject['ticker']}_{generated}.md"
-    write_tearsheet(subject, peer_rows, generated, tearsheet_path, contract_sections)
+    write_tearsheet(subject, peer_rows, generated, tearsheet_path, contract_sections, chart_paths)
     console.print(f"tear sheet: {tearsheet_path}")
 
     return 0
