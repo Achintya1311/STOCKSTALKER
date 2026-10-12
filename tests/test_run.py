@@ -178,8 +178,9 @@ def test_build_contract_section_reads_real_fixture_for_subject():
 
 
 def test_build_contract_section_reports_missing_fixture_with_reason():
+    # vol is the first namespace still unshipped for GULFOILLUB (Day 6).
     section = run.build_contract_section(
-        "factor", run.gate_factor, "fama-french-factor-model", "GULFOILLUB", FIXTURES
+        "vol", run.gate_vol, "implied-vol-surface", "GULFOILLUB", FIXTURES
     )
     assert section["available"] is False
     assert "GULFOILLUB" in section["reason"]
@@ -195,6 +196,18 @@ def test_build_contract_section_reads_real_fixture_for_subject_risk():
     assert section["available"] is True
     assert section["source"] == "monte-carlo-risk-lab"
     assert section["data"]["horizon_days"] == 20
+
+
+def test_build_contract_section_reads_real_fixture_for_subject_factor():
+    # Day 5: fama-french-factor-model's GULFOILLUB fixture is a genuine
+    # IIMA FF3+WML regression, not a synthetic stand-in -- same shape as
+    # valuation/fundamentals/risk above.
+    section = run.build_contract_section(
+        "factor", run.gate_factor, "fama-french-factor-model", "GULFOILLUB", FIXTURES
+    )
+    assert section["available"] is True
+    assert section["source"] == "fama-french-factor-model"
+    assert section["data"]["loadings"]["wml"] == pytest.approx(0.011272064937160637)
 
 
 def test_build_contract_section_reports_malformed_fixture_with_reason(tmp_path):
@@ -219,9 +232,9 @@ def test_build_contract_sections_covers_every_namespace_for_subject():
         "sentiment",
     ]
     available = {s["namespace"] for s in sections if s["available"]}
-    # valuation and fundamentals shipped Day 2; risk shipped Day 3.
-    # factor/vol/sentiment still land on later days.
-    assert available == {"valuation", "fundamentals", "risk"}
+    # valuation and fundamentals shipped Day 2; risk shipped Day 3; factor
+    # shipped Day 5. vol/sentiment still land on later days.
+    assert available == {"valuation", "fundamentals", "risk", "factor"}
     for section in sections:
         if not section["available"]:
             assert section["reason"]
