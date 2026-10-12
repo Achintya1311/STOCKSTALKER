@@ -178,13 +178,43 @@ def test_build_contract_section_reads_real_fixture_for_subject():
 
 
 def test_build_contract_section_reports_missing_fixture_with_reason():
-    # vol is the first namespace still unshipped for GULFOILLUB (Day 6).
+    # A peer, not the subject, so no UNVERIFIED_CONTRACT_REASONS override
+    # applies -- this is the generic "not built yet" path.
+    section = run.build_contract_section(
+        "vol", run.gate_vol, "implied-vol-surface", "CASTROLIND", FIXTURES
+    )
+    assert section["available"] is False
+    assert "CASTROLIND" in section["reason"]
+    assert "not found" in section["reason"]
+
+
+def test_build_contract_section_vol_for_subject_is_unverified_not_absent():
+    # Day 6: GULFOILLUB's NSE F&O underlying status could not be checked
+    # from this sandbox (the live NSE option-chain endpoint returned the
+    # same empty/blocked payload for GULFOILLUB and for RELIANCE, a known
+    # F&O name) -- the reason must say "unverified", never claim "no
+    # options", which is a different and unsupported finding.
     section = run.build_contract_section(
         "vol", run.gate_vol, "implied-vol-surface", "GULFOILLUB", FIXTURES
     )
     assert section["available"] is False
-    assert "GULFOILLUB" in section["reason"]
-    assert "not found" in section["reason"]
+    assert "unverified" in section["reason"]
+    assert "no options" not in section["reason"]
+
+
+def test_build_contract_section_reads_real_fixture_for_subject_sentiment():
+    # Day 6: headline-sentiment-vs-price's GULFOILLUB contract is a real,
+    # honest zero -- the ticker table has no rule for GULFOILLUB, so no
+    # headline in the ~50-headline fixture corpus resolves to it. That is
+    # a genuine "coverage: none" result, not a stand-in or a skipped day.
+    section = run.build_contract_section(
+        "sentiment", run.gate_sentiment, "headline-sentiment-vs-price", "GULFOILLUB", FIXTURES
+    )
+    assert section["available"] is True
+    assert section["source"] == "headline-sentiment-vs-price"
+    assert section["data"]["coverage"] == "none"
+    assert section["data"]["score_7d"] is None
+    assert section["data"]["headline_count_7d"] == 0
 
 
 def test_build_contract_section_reads_real_fixture_for_subject_risk():
@@ -233,11 +263,16 @@ def test_build_contract_sections_covers_every_namespace_for_subject():
     ]
     available = {s["namespace"] for s in sections if s["available"]}
     # valuation and fundamentals shipped Day 2; risk shipped Day 3; factor
-    # shipped Day 5. vol/sentiment still land on later days.
-    assert available == {"valuation", "fundamentals", "risk", "factor"}
+    # shipped Day 5; sentiment shipped Day 6 (a real zero-headline result,
+    # not a stand-in). vol stays unavailable -- Day 6 investigated it and
+    # found the F&O-underlying check itself unverifiable from this sandbox,
+    # not just unbuilt.
+    assert available == {"valuation", "fundamentals", "risk", "factor", "sentiment"}
     for section in sections:
         if not section["available"]:
             assert section["reason"]
+            if section["namespace"] == "vol":
+                assert "unverified" in section["reason"]
 
 
 def test_render_contract_section_available_shows_fields():

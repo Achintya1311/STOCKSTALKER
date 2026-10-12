@@ -167,6 +167,26 @@ def _fmt_scalar(value: Any) -> str:
     return str(value)
 
 
+# Day 6: namespaces where a missing fixture is not "not built yet" but an
+# investigated, inconclusive result -- the reason has to say that, not the
+# generic "fixture not found" line, or the tear sheet reads as an
+# unattempted day. GULFOILLUB's NSE F&O underlying status could not be
+# determined from this sandbox: implied-vol-surface's live NSE
+# option-chain endpoint returned the identical empty/blocked payload for
+# GULFOILLUB and for RELIANCE, a name known to have listed options, so an
+# empty response here is not evidence of "no chain" -- see that repo's
+# README Findings, 2026-10-12. This is "unverified", never "no options".
+UNVERIFIED_CONTRACT_REASONS: dict[tuple[str, str], str] = {
+    ("vol", "GULFOILLUB"): (
+        "unverified -- GULFOILLUB's NSE F&O underlying status could not be checked "
+        "from this sandbox. implied-vol-surface's live NSE option-chain endpoint "
+        "returned the same empty/blocked payload for GULFOILLUB as it did for "
+        "RELIANCE (a name with real listed options), so the blocked response "
+        "cannot be read as 'no option chain' -- see that repo's README Findings"
+    ),
+}
+
+
 def build_contract_section(
     namespace: str, gate_module: Any, source_repo: str, ticker: str, fixtures_dir: Path
 ) -> dict[str, Any]:
@@ -177,14 +197,19 @@ def build_contract_section(
     ``data/universe.txt`` (see the module docstring's Traps note). Returns
     an "available" section with the contract's own fields, or an
     "unavailable" section with a one-line reason: no fixture committed for
-    this ticker yet, or the fixture failed its gate's own validation.
+    this ticker yet, the fixture failed its gate's own validation, or (see
+    ``UNVERIFIED_CONTRACT_REASONS``) the absence itself was investigated and
+    found inconclusive rather than simply not attempted.
     """
     path = fixtures_dir / namespace / f"{ticker.upper()}.json"
     if not path.exists():
+        reason = UNVERIFIED_CONTRACT_REASONS.get((namespace, ticker.upper()))
+        if reason is None:
+            reason = f"no {source_repo} contract fixture for {ticker.upper()} ({path.relative_to(ROOT)} not found)"
         return {
             "namespace": namespace,
             "available": False,
-            "reason": f"no {source_repo} contract fixture for {ticker.upper()} ({path.relative_to(ROOT)} not found)",
+            "reason": reason,
         }
     try:
         data = gate_module.load_contract(path)
