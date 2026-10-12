@@ -16,13 +16,28 @@ table, are new here -- the screen has no notion of either. Both fall back
 to ``None`` ("n/a") when a fixture does not yet hold a full year of bars,
 rather than reporting a shorter-window number under a "1y" heading.
 
-Contract sections (valuation, fundamentals, risk, factor, vol, sentiment)
-are Day 2's work and are not read here.
+Contract sections (Day 2) read each satellite's own ``--contract`` file
+directly for the subject ticker -- ``fixtures/<namespace>/<TICKER>.json`` --
+through that namespace's existing ``gates.<namespace>.load_contract``,
+rather than through the screen-gate pattern those modules were built for
+(which only attaches a contract when the ticker is already a candidate in
+today's screen output, keyed off ``data/universe.txt``; the subject is
+deliberately not in that universe, so that pattern would never match it).
+A namespace with no fixture file for the subject, or a malformed one,
+renders one explicit "not available" line instead of silently omitting
+the section or standing in a contract for a different ticker.
+
+``sizing`` is deliberately left out: markowitz-portfolio-optimizer's
+sector-capped weight is a position size *within a screened universe of
+candidates*, and a sector-capped weight across the subject plus its three
+lubricant peers would be a sector bet dressed up as a position size, not
+a number anyone should act on. See NEXT_STEPS.md Day 2.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -31,12 +46,31 @@ from rich.console import Console
 from rich.table import Table
 
 from .data.providers import ProviderError, load
+from .gates import factor as gate_factor
+from .gates import fundamentals as gate_fundamentals
+from .gates import risk as gate_risk
+from .gates import sentiment as gate_sentiment
+from .gates import valuation as gate_valuation
+from .gates import vol as gate_vol
 from .screener import CONFIG_PATH, blended_score, compute_signals, liquidity_metrics, load_config
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = ROOT / "outputs"
+FIXTURES_DIR = ROOT / "fixtures"
 
 TRADING_DAYS_PER_YEAR = 252
+
+# (namespace, gate module, the satellite repo that publishes it) in the
+# order NEXT_STEPS.md Day 2 lists them. ``sizing`` is excluded on purpose --
+# see the module docstring.
+CONTRACT_NAMESPACES: list[tuple[str, Any, str]] = [
+    ("valuation", gate_valuation, "reverse-dcf-engine"),
+    ("fundamentals", gate_fundamentals, "three-statement-model"),
+    ("risk", gate_risk, "monte-carlo-risk-lab"),
+    ("factor", gate_factor, "fama-french-factor-model"),
+    ("vol", gate_vol, "implied-vol-surface"),
+    ("sentiment", gate_sentiment, "headline-sentiment-vs-price"),
+]
 
 # Lubricant-sector peers for GULFOILLUB, the subject this project is built
 # around (NEXT_STEPS.md, "already committed for this project"). Sourced from
@@ -120,6 +154,87 @@ def _fmt_pct(value: float | None) -> str:
     return f"{value:+.2%}" if value is not None else "n/a"
 
 
+def _fmt_scalar(value: Any) -> str:
+    """Render one contract field for both the terminal table and the tear sheet."""
+    if value is None:
+        return "n/a"
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, float):
+        return f"{value:+.4f}"
+    if isinstance(value, dict):
+        return ", ".join(f"{k}={_fmt_scalar(v)}" for k, v in value.items())
+    return str(value)
+
+
+def build_contract_section(
+    namespace: str, gate_module: Any, source_repo: str, ticker: str, fixtures_dir: Path
+) -> dict[str, Any]:
+    """Read ``fixtures/<namespace>/<TICKER>.json`` for ``ticker`` through ``gate_module.load_contract``.
+
+    Looks the fixture up by ticker directly -- never through a screen-gate's
+    ``apply_*_gate``, which only matches a candidate already in
+    ``data/universe.txt`` (see the module docstring's Traps note). Returns
+    an "available" section with the contract's own fields, or an
+    "unavailable" section with a one-line reason: no fixture committed for
+    this ticker yet, or the fixture failed its gate's own validation.
+    """
+    path = fixtures_dir / namespace / f"{ticker.upper()}.json"
+    if not path.exists():
+        return {
+            "namespace": namespace,
+            "available": False,
+            "reason": f"no {source_repo} contract fixture for {ticker.upper()} ({path.relative_to(ROOT)} not found)",
+        }
+    try:
+        data = gate_module.load_contract(path)
+    except (ValueError, json.JSONDecodeError) as exc:
+        return {"namespace": namespace, "available": False, "reason": str(exc)}
+    return {"namespace": namespace, "available": True, "source": source_repo, "data": data}
+
+
+def build_contract_sections(ticker: str, fixtures_dir: Path | None = None) -> list[dict[str, Any]]:
+    fixtures_dir = fixtures_dir or FIXTURES_DIR
+    return [
+        build_contract_section(namespace, gate_module, source_repo, ticker, fixtures_dir)
+        for namespace, gate_module, source_repo in CONTRACT_NAMESPACES
+    ]
+
+
+def render_contract_section(section: dict[str, Any]) -> Table | str:
+    if not section["available"]:
+        return f"[yellow]·[/yellow] {section['namespace']}: not available -- {section['reason']}"
+    table = Table(title=f"{section['namespace']} (via {section['source']})")
+    table.add_column("Field")
+    table.add_column("Value", justify="right")
+    for key, value in section["data"].items():
+        table.add_row(key, _fmt_scalar(value))
+    return table
+
+
+def contract_sections_markdown(sections: list[dict[str, Any]]) -> list[str]:
+    lines = ["## Contract sections", ""]
+    for section in sections:
+        lines.append(f"### {section['namespace'].capitalize()}")
+        lines.append("")
+        if not section["available"]:
+            lines.append(f"Not available -- {section['reason']}")
+        else:
+            lines.append(f"Via `{section['source']}`.")
+            lines.append("")
+            lines.append("| Field | Value |")
+            lines.append("|-------|-------|")
+            for key, value in section["data"].items():
+                lines.append(f"| {key} | {_fmt_scalar(value)} |")
+        lines.append("")
+    lines.append(
+        "`sizing` is left out on purpose: a sector-capped weight across the subject and "
+        "its three lubricant peers is a sector bet, not a position size (NEXT_STEPS.md Day 2)."
+    )
+    lines.append("")
+    return lines
+
+
 def render_subject_table(subject: dict[str, Any]) -> Table:
     table = Table(title=f"{subject['ticker']} — {subject['as_of']} (close {subject['close']:,.2f})")
     table.add_column("Score", justify="right")
@@ -155,7 +270,11 @@ def render_peer_table(rows: list[dict[str, Any]]) -> Table:
 
 
 def write_tearsheet(
-    subject: dict[str, Any], peer_rows: list[dict[str, Any]], generated: str, path: Path
+    subject: dict[str, Any],
+    peer_rows: list[dict[str, Any]],
+    generated: str,
+    path: Path,
+    contract_sections: list[dict[str, Any]] | None = None,
 ) -> None:
     s = subject["signals"]
     lines = [
@@ -179,14 +298,7 @@ def write_tearsheet(
             f"| {r['ticker']} | {_fmt_pct(r['return_1y'])} | {_fmt_pct(r['volatility_1y'])} "
             f"| {r['adv_20d']:,.0f} |"
         )
-    lines += [
-        "",
-        "## Not yet included",
-        "",
-        "Contract sections (valuation, fundamentals, risk, factor, vol, sentiment) are "
-        "Day 2's work -- this tear sheet is price and peers only.",
-        "",
-    ]
+    lines += ["", *contract_sections_markdown(contract_sections or [])]
     path.write_text("\n".join(lines) + "\n")
 
 
@@ -227,16 +339,19 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     peer_rows = build_peer_table([args.ticker, *peers], provider_name, errors)
+    contract_sections = build_contract_sections(args.ticker)
 
     console.print(render_subject_table(subject))
     console.print(render_peer_table(peer_rows))
     for e in errors:
         console.print(f"[red]![/red] {e}")
+    for section in contract_sections:
+        console.print(render_contract_section(section))
 
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     tearsheet_path = out_dir / f"tearsheet_{subject['ticker']}_{generated}.md"
-    write_tearsheet(subject, peer_rows, generated, tearsheet_path)
+    write_tearsheet(subject, peer_rows, generated, tearsheet_path, contract_sections)
     console.print(f"tear sheet: {tearsheet_path}")
 
     return 0

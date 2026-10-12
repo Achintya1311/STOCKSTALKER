@@ -2,6 +2,7 @@
 end against the committed GULFOILLUB / lubricant-peer fixtures."""
 
 import io
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -122,7 +123,7 @@ def test_write_tearsheet_contains_subject_and_peers(cfg, tmp_path):
     assert "GULFOILLUB" in text
     for ticker in ["CASTROLIND", "SOTL", "GANDHAR"]:
         assert ticker in text
-    assert "Not yet included" in text
+    assert "Contract sections" in text
 
 
 def test_cli_end_to_end_writes_tearsheet(tmp_path, capsys):
@@ -156,3 +157,111 @@ def test_cli_reports_missing_ticker_without_traceback(capsys):
     assert rc == 1
     captured = capsys.readouterr()
     assert "NOPE" in captured.out
+
+
+# -- Day 2: contract sections ------------------------------------------------
+
+
+def test_contract_namespaces_excludes_sizing_on_purpose():
+    namespaces = [n for n, _, _ in run.CONTRACT_NAMESPACES]
+    assert namespaces == ["valuation", "fundamentals", "risk", "factor", "vol", "sentiment"]
+    assert "sizing" not in namespaces
+
+
+def test_build_contract_section_reads_real_fixture_for_subject():
+    section = run.build_contract_section(
+        "valuation", run.gate_valuation, "reverse-dcf-engine", "GULFOILLUB", FIXTURES
+    )
+    assert section["available"] is True
+    assert section["source"] == "reverse-dcf-engine"
+    assert section["data"]["implied_cagr"] == pytest.approx(-0.004924241036374619)
+
+
+def test_build_contract_section_reports_missing_fixture_with_reason():
+    section = run.build_contract_section(
+        "risk", run.gate_risk, "monte-carlo-risk-lab", "GULFOILLUB", FIXTURES
+    )
+    assert section["available"] is False
+    assert "GULFOILLUB" in section["reason"]
+    assert "not found" in section["reason"]
+
+
+def test_build_contract_section_reports_malformed_fixture_with_reason(tmp_path):
+    namespace_dir = tmp_path / "risk"
+    namespace_dir.mkdir()
+    (namespace_dir / "GULFOILLUB.json").write_text(json.dumps({"risk": {"var_95": -0.1}}))
+    section = run.build_contract_section(
+        "risk", run.gate_risk, "monte-carlo-risk-lab", "GULFOILLUB", tmp_path
+    )
+    assert section["available"] is False
+    assert "missing keys" in section["reason"]
+
+
+def test_build_contract_sections_covers_every_namespace_for_subject():
+    sections = run.build_contract_sections("GULFOILLUB", FIXTURES)
+    assert [s["namespace"] for s in sections] == [
+        "valuation",
+        "fundamentals",
+        "risk",
+        "factor",
+        "vol",
+        "sentiment",
+    ]
+    available = {s["namespace"] for s in sections if s["available"]}
+    # Only valuation and fundamentals have a committed GULFOILLUB fixture today
+    # (Day 2's scope); risk/factor/vol/sentiment land on later days.
+    assert available == {"valuation", "fundamentals"}
+    for section in sections:
+        if not section["available"]:
+            assert section["reason"]
+
+
+def test_render_contract_section_available_shows_fields():
+    section = run.build_contract_section(
+        "fundamentals", run.gate_fundamentals, "three-statement-model", "GULFOILLUB", FIXTURES
+    )
+    text = render(run.render_contract_section(section))
+    assert "fundamentals" in text
+    assert "balance_check" in text
+    assert "passed" in text
+
+
+def test_render_contract_section_unavailable_is_a_one_line_reason():
+    section = {"namespace": "vol", "available": False, "reason": "no fixture for GULFOILLUB"}
+    rendered = run.render_contract_section(section)
+    assert isinstance(rendered, str)
+    assert "not available" in rendered
+    assert "no fixture for GULFOILLUB" in rendered
+
+
+def test_contract_sections_markdown_never_shows_sizing(cfg):
+    sections = run.build_contract_sections("GULFOILLUB", FIXTURES)
+    lines = run.contract_sections_markdown(sections)
+    text = "\n".join(lines)
+    assert "### Valuation" in text
+    assert "### Fundamentals" in text
+    assert "### Risk" in text
+    assert "Not available" in text
+    assert "left out on purpose" in text
+    assert "### Sizing" not in text
+
+
+def test_cli_end_to_end_includes_contract_sections(tmp_path):
+    rc = run.main(
+        [
+            "--ticker",
+            "GULFOILLUB",
+            "--offline",
+            "--date",
+            "2026-10-12",
+            "--output-dir",
+            str(tmp_path),
+        ]
+    )
+    assert rc == 0
+    text = (tmp_path / "tearsheet_GULFOILLUB_2026-10-12.md").read_text()
+    assert "## Contract sections" in text
+    assert "### Valuation" in text
+    assert "balance_check" in text
+    assert "Not available" in text
+    assert "sizing" in text.lower()
