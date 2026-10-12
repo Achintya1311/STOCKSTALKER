@@ -179,11 +179,22 @@ def test_build_contract_section_reads_real_fixture_for_subject():
 
 def test_build_contract_section_reports_missing_fixture_with_reason():
     section = run.build_contract_section(
-        "risk", run.gate_risk, "monte-carlo-risk-lab", "GULFOILLUB", FIXTURES
+        "factor", run.gate_factor, "fama-french-factor-model", "GULFOILLUB", FIXTURES
     )
     assert section["available"] is False
     assert "GULFOILLUB" in section["reason"]
     assert "not found" in section["reason"]
+
+
+def test_build_contract_section_reads_real_fixture_for_subject_risk():
+    # Day 3: monte-carlo-risk-lab's GULFOILLUB fixture is a genuine match,
+    # not a synthetic stand-in -- same shape as valuation/fundamentals above.
+    section = run.build_contract_section(
+        "risk", run.gate_risk, "monte-carlo-risk-lab", "GULFOILLUB", FIXTURES
+    )
+    assert section["available"] is True
+    assert section["source"] == "monte-carlo-risk-lab"
+    assert section["data"]["horizon_days"] == 20
 
 
 def test_build_contract_section_reports_malformed_fixture_with_reason(tmp_path):
@@ -208,9 +219,9 @@ def test_build_contract_sections_covers_every_namespace_for_subject():
         "sentiment",
     ]
     available = {s["namespace"] for s in sections if s["available"]}
-    # Only valuation and fundamentals have a committed GULFOILLUB fixture today
-    # (Day 2's scope); risk/factor/vol/sentiment land on later days.
-    assert available == {"valuation", "fundamentals"}
+    # valuation and fundamentals shipped Day 2; risk shipped Day 3.
+    # factor/vol/sentiment still land on later days.
+    assert available == {"valuation", "fundamentals", "risk"}
     for section in sections:
         if not section["available"]:
             assert section["reason"]
