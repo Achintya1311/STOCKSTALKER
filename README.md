@@ -83,8 +83,34 @@ and lost to buy-and-hold on RELIANCE, the one name that actually went up.
 Mean strategy return -10.85% vs. mean buy-and-hold -23.40%. Read this as
 "doesn't obviously do worse than being long," not as validated edge —
 three tickers over one overlapping two-year window is not a sample that
-supports a stronger claim either way. Full numbers in
-`outputs/backtest_<date>.{json,csv,md}`.
+supports a stronger claim either way.
+
+### Day 8 — the same table with costs
+
+The no-cost numbers above were never realistic: daily rebalancing pays STT
+on every entry and exit. `backtest.py` now charges 0.1% STT per side,
+0.015% stamp duty on the buy side only, and a `--slippage-bps` flag
+(default 10) on every trade — Indian delivery-equity costs, not a made-up
+haircut. Buy-and-hold pays the same schedule on its one entry and one exit,
+so the comparison below is still apples-to-apples; it just barely moves the
+buy-and-hold number, because that side trades twice in total instead of
+roughly 150 times.
+
+| Ticker | Strategy | Buy & hold | Edge |
+|---|---|---|---|
+| RELIANCE.NS | -10.45% | +4.76% | -15.21% |
+| TATACHEM.NS | -1.32% | -39.60% | +38.27% |
+| CROMPTON.NS | -41.49% | -36.31% | -5.18% |
+
+Costs change the verdict, not just the margin: CROMPTON flips from
+"beats buy-and-hold" to "loses to it" once its ~138 round trips each pay
+their share of STT, stamp duty and slippage — a name that looked like a
+wash before costs is a clear loser after them. Only 1 of 3 names still
+beats buy-and-hold (down from 2 of 3), mean strategy return -17.75% vs.
+mean buy-and-hold -23.72%. The daily-rebalancing style this screen implies
+is considerably more expensive than the Day 7 numbers let on — read this as
+the honest version of the Day 7 finding, not a separate result. Full
+numbers for both tables, every run, in `outputs/backtest_<date>.{json,csv,md}`.
 
 ## Checkpoint log
 
@@ -128,6 +154,7 @@ supports a stronger claim either way. Full numbers in
 - GULFOILLUB's real `factor` section (Day 5) is a genuinely different regression from RELIANCE's screen-gate one, not just a different ticker: 137 overlapping months against RELIANCE's underpowered 22, IIMA's Indian factors instead of Ken French's USD ones, and FF3+WML instead of FF5+Mom (IIMA has no RMW/CMA). The honest result is still an insignificant alpha (`alpha_t` ≈ +1.01, OLS) despite the much larger sample — the front door renders `alpha_annual`, `alpha_t`, `significant` and the `loadings` dict (including a `wml` key RELIANCE's own FF5+Mom contract has never carried) but not the Newey-West-corrected t-stat or the diagnostics tests fama-french-factor-model's own README records; a reader who needs those has to go read that repo directly, the same gap the `risk` section above already has for its Kupiec verdict.
 - Day 6 is an absence day, and both absences are real, not placeholders. `sentiment` is now filled for GULFOILLUB with a genuine zero: `python -m sentiment.contract --ticker GULFOILLUB.NS` against headline-sentiment-vs-price's ~50-headline Economic Times RSS snapshot returns `{"score_7d": null, "headline_count_7d": 0, "model": "vader", "coverage": "none"}`, because that repo's ticker table (`sentiment.tickers`) has no rule naming GULFOILLUB at all — a deliberately narrow, closed lookup (see that repo's README), not a filter that happened to exclude it. A count of zero from a ~50-headline single-source snapshot says nothing about this stock's real news coverage; it is a fact about the corpus, not about the company. `vol` stays unavailable, but the reason changed from "no fixture yet" to an investigated "unverified": a live check against NSE's own option-chain endpoint (`volsurface.chain.NSEChainProvider`) was run from this sandbox for both GULFOILLUB and RELIANCE, and both came back with the identical empty `{}` payload after a 403 on the cookie warm-up — RELIANCE is known to have listed NSE options, so an empty response proves the sandbox's network is blocked here, not that GULFOILLUB has no option chain. `stockstalker.run.UNVERIFIED_CONTRACT_REASONS` carries that distinction into the tear sheet by name rather than letting the generic "fixture not found" line imply a negative that was never actually checked.
 - Day 7's three charts (`stockstalker.viz.charts`, written to `outputs/` by `stockstalker.run` unless `--no-charts`) are deliberately scoped narrower than "subject vs peers" everywhere: only the rebased comparison plots all four names, because NEXT_STEPS.md's "subject vs peers" qualifier sits on that one chart alone — drawdown and rolling volatility are GULFOILLUB only, a risk profile of the name the note is about, not a four-line reprise of the peer table. The rebased comparison is not one shared start date either: each series is divided by its own first close, so CASTROLIND and SOTL (both committed back to 2014-07-31, the same day as GULFOILLUB) rebase from day one of the subject's own history, but GANDHAR (IPO 2023-11-30) rebases from its own much later first day — the legend names each series' own start date so a ~3-year GANDHAR line is never misread as spanning the same ~11 years as the other three. These fixtures were pulled with `yfinance`'s `auto_adjust=True`, which already folds dividends into every close, so these are rebased total-return-ish series, not pure price.
+- Day 8's trading costs (`backtest.STT_RATE`, `backtest.STAMP_DUTY_RATE`, `--slippage-bps`) are a flat percentage of position value charged on each entry and exit, not a simulated order-book fill. There is no separate bid-ask spread, no market-impact model, and no partial fills — real execution on ~140-190 round trips a year on these small/mid-cap names would plausibly be worse, not better, than this estimate. `stockstalker.report`'s backtest table still shows only the no-cost numbers (it calls the same `run_backtest`, but renders `strategy_return`/`buy_and_hold_return`, not the `_with_costs` fields) — the cost-adjusted view only exists in this README's Findings section and in `outputs/backtest_<date>.{json,csv,md}`, not in the quick terminal screen.
 
 ## Where this sits
 

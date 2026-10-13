@@ -65,6 +65,43 @@ def test_long_flat_returns_capture_the_next_bar_after_a_qualifying_score():
     assert returns.iloc[2] == pytest.approx(0.0)
 
 
+def test_holdings_from_scores_mirrors_long_flat_returns_shift():
+    idx = pd.date_range("2024-01-01", periods=4, freq="D")
+    scores = pd.Series([0.9, 0.1, 0.9, np.nan], index=idx)
+    holdings = backtest.holdings_from_scores(scores, threshold=0.5)
+    assert list(holdings) == [False, True, False, True]
+
+
+def test_trading_cost_series_charges_both_legs_on_a_one_day_hold():
+    idx = pd.date_range("2024-01-01", periods=4, freq="D")
+    holdings = pd.Series([False, True, False, True], index=idx)
+    costs = backtest.trading_cost_series(holdings, buy_cost_rate=0.01, sell_cost_rate=0.02)
+    assert costs.iloc[0] == 0.0
+    assert costs.iloc[1] == pytest.approx(0.03)  # one-day hold: entry and exit same day
+    assert costs.iloc[2] == 0.0
+    assert costs.iloc[3] == pytest.approx(0.03)  # still long at the end of the series
+
+
+def test_trading_cost_series_splits_entry_and_exit_over_a_multi_day_hold():
+    idx = pd.date_range("2024-01-01", periods=4, freq="D")
+    holdings = pd.Series([False, True, True, False], index=idx)
+    costs = backtest.trading_cost_series(holdings, buy_cost_rate=0.01, sell_cost_rate=0.02)
+    assert costs.iloc[0] == 0.0
+    assert costs.iloc[1] == pytest.approx(0.01)
+    assert costs.iloc[2] == pytest.approx(0.02)
+    assert costs.iloc[3] == 0.0
+
+
+def test_long_flat_returns_with_costs_never_beats_the_no_cost_version():
+    idx = pd.date_range("2024-01-01", periods=4, freq="D")
+    df = pd.DataFrame({"close": [100.0, 110.0, 121.0, 90.0]}, index=idx)
+    scores = pd.Series([0.9, 0.1, 0.9, np.nan], index=idx)
+    gross = backtest.long_flat_returns(df, scores, threshold=0.5)
+    net = backtest.long_flat_returns_with_costs(df, scores, threshold=0.5, slippage_bps=10.0)
+    assert (net <= gross + 1e-12).all()
+    assert net.iloc[1] < gross.iloc[1]
+
+
 def test_cumulative_return_compounds():
     returns = pd.Series([0.1, 0.1, -0.1])
     expected = 1.1 * 1.1 * 0.9 - 1
@@ -81,15 +118,46 @@ def test_buy_and_hold_return_is_zero_for_a_too_short_window(reliance):
     assert backtest.buy_and_hold_return(reliance, start_idx=len(reliance) - 1) == 0.0
 
 
+def test_buy_and_hold_return_with_costs_is_worse_than_the_no_cost_version(reliance):
+    gross = backtest.buy_and_hold_return(reliance, start_idx=50)
+    net = backtest.buy_and_hold_return_with_costs(reliance, start_idx=50, slippage_bps=10.0)
+    assert net < gross
+
+
+def test_buy_and_hold_return_with_costs_matches_manual_round_trip(reliance):
+    net = backtest.buy_and_hold_return_with_costs(reliance, start_idx=50, slippage_bps=10.0)
+    buy_rate = backtest.STT_RATE + backtest.STAMP_DUTY_RATE + 0.0010
+    sell_rate = backtest.STT_RATE + 0.0010
+    entry = reliance["close"].iloc[50] * (1 + buy_rate)
+    exit_ = reliance["close"].iloc[-1] * (1 - sell_rate)
+    assert net == pytest.approx(exit_ / entry - 1)
+
+
+def test_buy_and_hold_return_with_costs_is_zero_for_a_too_short_window(reliance):
+    assert backtest.buy_and_hold_return_with_costs(reliance, start_idx=len(reliance) - 1) == 0.0
+
+
 def test_backtest_ticker_shape(cfg):
     result = backtest.backtest_ticker("RELIANCE.NS", "fixtures", cfg)
     assert set(result) >= {
         "ticker", "start", "end", "days_tested", "days_long",
-        "strategy_return", "buy_and_hold_return", "edge", "beat_buy_and_hold",
+        "strategy_return", "strategy_return_with_costs",
+        "buy_and_hold_return", "buy_and_hold_return_with_costs",
+        "edge", "edge_with_costs",
+        "beat_buy_and_hold", "beat_buy_and_hold_with_costs",
     }
     assert result["ticker"] == "RELIANCE.NS"
     assert result["edge"] == pytest.approx(result["strategy_return"] - result["buy_and_hold_return"])
     assert result["beat_buy_and_hold"] == (result["strategy_return"] > result["buy_and_hold_return"])
+    assert result["edge_with_costs"] == pytest.approx(
+        result["strategy_return_with_costs"] - result["buy_and_hold_return_with_costs"]
+    )
+    assert result["beat_buy_and_hold_with_costs"] == (
+        result["strategy_return_with_costs"] > result["buy_and_hold_return_with_costs"]
+    )
+    # costs only ever subtract from the no-cost numbers, never add to them
+    assert result["strategy_return_with_costs"] <= result["strategy_return"] + 1e-9
+    assert result["buy_and_hold_return_with_costs"] <= result["buy_and_hold_return"] + 1e-9
 
 
 def test_backtest_ticker_raises_when_history_is_too_short(cfg, monkeypatch):
@@ -129,6 +197,35 @@ def test_run_backtest_summary_matches_results(cfg):
     assert s["mean_strategy_return"] == pytest.approx(
         sum(r["strategy_return"] for r in report["results"]) / len(report["results"])
     )
+    assert s["tickers_beating_buy_and_hold_with_costs"] == sum(
+        1 for r in report["results"] if r["beat_buy_and_hold_with_costs"]
+    )
+    # Each per-ticker number is already rounded to 4dp, and the mean is rounded
+    # again on top of that, so an exact match isn't guaranteed — only agreement
+    # within the rounding granularity.
+    assert s["mean_strategy_return_with_costs"] == pytest.approx(
+        sum(r["strategy_return_with_costs"] for r in report["results"]) / len(report["results"]),
+        abs=5e-5,
+    )
+    assert s["mean_buy_and_hold_return_with_costs"] == pytest.approx(
+        sum(r["buy_and_hold_return_with_costs"] for r in report["results"]) / len(report["results"]),
+        abs=5e-5,
+    )
+
+
+def test_run_backtest_honors_the_slippage_bps_argument(cfg):
+    low = backtest.run_backtest(
+        ["RELIANCE.NS"], "fixtures", cfg, generated="2026-09-07", slippage_bps=0.0
+    )
+    high = backtest.run_backtest(
+        ["RELIANCE.NS"], "fixtures", cfg, generated="2026-09-07", slippage_bps=100.0
+    )
+    assert low["slippage_bps"] == 0.0
+    assert high["slippage_bps"] == 100.0
+    assert (
+        high["results"][0]["strategy_return_with_costs"]
+        <= low["results"][0]["strategy_return_with_costs"]
+    )
 
 
 def test_write_json_round_trips_the_report(cfg, tmp_path):
@@ -145,6 +242,8 @@ def test_write_csv_has_one_row_per_ticker(cfg, tmp_path):
     backtest.write_csv(report, path)
     rows = pd.read_csv(path)
     assert len(rows) == len(report["results"])
+    assert "strategy_return_with_costs" in rows.columns
+    assert "buy_and_hold_return_with_costs" in rows.columns
 
 
 def test_write_markdown_reports_beats_and_caveats(cfg, tmp_path):
@@ -155,6 +254,8 @@ def test_write_markdown_reports_beats_and_caveats(cfg, tmp_path):
     assert "RELIANCE.NS" in text
     assert "Caveats" in text
     assert "not statistically" in text
+    assert "No costs (Day 7)" in text
+    assert "With costs (Day 8)" in text
 
 
 def test_write_markdown_handles_no_results(tmp_path):
@@ -176,6 +277,16 @@ def test_main_runs_offline_against_the_real_fixtures_and_writes_all_three_files(
     payload = json.loads((tmp_path / "backtest_2026-09-07.json").read_text())
     assert payload["schema"] == "backtest-v1"
     assert len(payload["results"]) == 3
+    assert payload["slippage_bps"] == backtest.DEFAULT_SLIPPAGE_BPS
+
+
+def test_main_accepts_a_custom_slippage_bps(tmp_path):
+    exit_code = backtest.main(
+        ["--output-dir", str(tmp_path), "--date", "2026-09-07", "--slippage-bps", "25"]
+    )
+    assert exit_code == 0
+    payload = json.loads((tmp_path / "backtest_2026-09-07.json").read_text())
+    assert payload["slippage_bps"] == 25.0
 
 
 def test_main_rejects_live_and_offline_together(tmp_path):

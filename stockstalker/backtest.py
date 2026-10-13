@@ -34,6 +34,12 @@ OUTPUT_DIR = ROOT / "outputs"
 
 DEFAULT_THRESHOLD = 0.5  # score >= 0.5 means the blend of signals is non-negative
 
+# Indian delivery-equity costs. STT is charged on both legs of a delivery
+# trade; stamp duty only on the buy leg (both NSE, as of this writing).
+STT_RATE = 0.001
+STAMP_DUTY_RATE = 0.00015
+DEFAULT_SLIPPAGE_BPS = 10.0
+
 
 def burn_in_period(cfg: dict[str, Any]) -> int:
     """Bars needed before every signal in the blend has a defined value.
@@ -79,6 +85,55 @@ def long_flat_returns(df: pd.DataFrame, scores: pd.Series, threshold: float) -> 
     return (position.shift(1) * daily_return).fillna(0.0)
 
 
+def holdings_from_scores(scores: pd.Series, threshold: float) -> pd.Series:
+    """Actual day-by-day position: yesterday's score decides today's holding.
+
+    Mirrors the ``position.shift(1)`` inside :func:`long_flat_returns` so the
+    two never drift apart — this is what a trade-cost model needs to know
+    when a position actually opens or closes, not just what the signal was.
+    """
+    position = (scores >= threshold).astype(float)
+    return position.shift(1).fillna(0.0).astype(bool)
+
+
+def trading_cost_series(
+    holdings: pd.Series, buy_cost_rate: float, sell_cost_rate: float
+) -> pd.Series:
+    """Cost (as a fraction of position value) charged on each entry/exit day.
+
+    A buy cost lands on the day a flat position turns long — that day's
+    return already reflects holding from the open, so the entry cost belongs
+    there. A sell cost lands on the *last* day still long, not the first flat
+    day after: the flat day earns zero return by construction, while the
+    exit realizes (and should discount) the gain the position just earned.
+    A one-day round trip gets both costs on the same day.
+    """
+    prev_day_long = holdings.shift(1).fillna(False).astype(bool)
+    next_day_long = holdings.shift(-1).fillna(False).astype(bool)
+    entries = holdings & ~prev_day_long
+    exits = holdings & ~next_day_long
+    costs = pd.Series(0.0, index=holdings.index)
+    costs[entries] += buy_cost_rate
+    costs[exits] += sell_cost_rate
+    return costs
+
+
+def long_flat_returns_with_costs(
+    df: pd.DataFrame,
+    scores: pd.Series,
+    threshold: float,
+    slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
+) -> pd.Series:
+    """``long_flat_returns``, minus STT, stamp duty and slippage on every trade."""
+    gross = long_flat_returns(df, scores, threshold)
+    holdings = holdings_from_scores(scores, threshold)
+    slippage_rate = slippage_bps / 10_000
+    buy_cost_rate = STT_RATE + STAMP_DUTY_RATE + slippage_rate
+    sell_cost_rate = STT_RATE + slippage_rate
+    costs = trading_cost_series(holdings, buy_cost_rate, sell_cost_rate)
+    return gross - costs
+
+
 def cumulative_return(returns: pd.Series) -> float:
     return float((1 + returns).prod() - 1)
 
@@ -91,10 +146,41 @@ def buy_and_hold_return(df: pd.DataFrame, start_idx: int) -> float:
     return float(window["close"].iloc[-1] / window["close"].iloc[0] - 1)
 
 
+def buy_and_hold_return_with_costs(
+    df: pd.DataFrame, start_idx: int, slippage_bps: float = DEFAULT_SLIPPAGE_BPS
+) -> float:
+    """``buy_and_hold_return`` after one round trip's STT, stamp duty and slippage.
+
+    Buy-and-hold only trades twice (enter once, exit once), so this is exact
+    rather than the strategy's day-by-day approximation: the effective entry
+    price is marked up by the buy-side costs, the effective exit price marked
+    down by the sell-side costs. Without this, "edge with costs" would compare
+    a costed strategy against an uncosted benchmark, which is not a fair fight.
+    """
+    window = df.iloc[start_idx:]
+    if len(window) < 2:
+        return 0.0
+    slippage_rate = slippage_bps / 10_000
+    buy_cost_rate = STT_RATE + STAMP_DUTY_RATE + slippage_rate
+    sell_cost_rate = STT_RATE + slippage_rate
+    effective_entry = window["close"].iloc[0] * (1 + buy_cost_rate)
+    effective_exit = window["close"].iloc[-1] * (1 - sell_cost_rate)
+    return float(effective_exit / effective_entry - 1)
+
+
 def backtest_ticker(
-    ticker: str, provider_name: str, cfg: dict[str, Any], threshold: float = DEFAULT_THRESHOLD
+    ticker: str,
+    provider_name: str,
+    cfg: dict[str, Any],
+    threshold: float = DEFAULT_THRESHOLD,
+    slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
 ) -> dict[str, Any]:
-    """Walk-forward strategy vs. buy-and-hold for one ticker, same tested window for both."""
+    """Walk-forward strategy vs. buy-and-hold for one ticker, same tested window for both.
+
+    Reports both the no-cost strategy return (the Day 7 number) and a
+    cost-adjusted one (STT + stamp duty + slippage on every entry/exit), so
+    neither number silently replaces the other.
+    """
     df = load(ticker, provider=provider_name)
     burn_in = burn_in_period(cfg)
     if len(df) <= burn_in + 1:
@@ -104,8 +190,13 @@ def backtest_ticker(
 
     scores = walk_forward_scores(df, cfg)
     strategy_returns = long_flat_returns(df, scores, threshold).iloc[burn_in + 1 :]
+    strategy_returns_with_costs = long_flat_returns_with_costs(
+        df, scores, threshold, slippage_bps
+    ).iloc[burn_in + 1 :]
     strategy_cum = cumulative_return(strategy_returns)
+    strategy_cum_with_costs = cumulative_return(strategy_returns_with_costs)
     hold_cum = buy_and_hold_return(df, burn_in)
+    hold_cum_with_costs = buy_and_hold_return_with_costs(df, burn_in, slippage_bps)
 
     tested_scores = scores.iloc[burn_in:-1]  # scores that actually gated a next-day trade
     days_long = int((tested_scores >= threshold).sum())
@@ -117,9 +208,13 @@ def backtest_ticker(
         "days_tested": int(len(strategy_returns)),
         "days_long": days_long,
         "strategy_return": round(strategy_cum, 4),
+        "strategy_return_with_costs": round(strategy_cum_with_costs, 4),
         "buy_and_hold_return": round(hold_cum, 4),
+        "buy_and_hold_return_with_costs": round(hold_cum_with_costs, 4),
         "edge": round(strategy_cum - hold_cum, 4),
+        "edge_with_costs": round(strategy_cum_with_costs - hold_cum_with_costs, 4),
         "beat_buy_and_hold": strategy_cum > hold_cum,
+        "beat_buy_and_hold_with_costs": strategy_cum_with_costs > hold_cum_with_costs,
     }
 
 
@@ -130,6 +225,7 @@ def run_backtest(
     threshold: float = DEFAULT_THRESHOLD,
     generated: str | None = None,
     errors: list[str] | None = None,
+    slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
 ) -> dict[str, Any]:
     """Backtest every ticker, dropping (and recording) the ones that fail to fetch."""
     if errors is None:
@@ -137,19 +233,31 @@ def run_backtest(
     results = []
     for ticker in tickers:
         try:
-            results.append(backtest_ticker(ticker, provider_name, cfg, threshold))
+            results.append(backtest_ticker(ticker, provider_name, cfg, threshold, slippage_bps))
         except ProviderError as exc:
             errors.append(f"{ticker}: {exc}")
 
     n_beat = sum(1 for r in results if r["beat_buy_and_hold"])
+    n_beat_with_costs = sum(1 for r in results if r["beat_buy_and_hold_with_costs"])
     summary = {
         "tickers_tested": len(results),
         "tickers_beating_buy_and_hold": n_beat,
+        "tickers_beating_buy_and_hold_with_costs": n_beat_with_costs,
         "mean_strategy_return": round(sum(r["strategy_return"] for r in results) / len(results), 4)
+        if results
+        else 0.0,
+        "mean_strategy_return_with_costs": round(
+            sum(r["strategy_return_with_costs"] for r in results) / len(results), 4
+        )
         if results
         else 0.0,
         "mean_buy_and_hold_return": round(
             sum(r["buy_and_hold_return"] for r in results) / len(results), 4
+        )
+        if results
+        else 0.0,
+        "mean_buy_and_hold_return_with_costs": round(
+            sum(r["buy_and_hold_return_with_costs"] for r in results) / len(results), 4
         )
         if results
         else 0.0,
@@ -159,6 +267,12 @@ def run_backtest(
         "generated": generated or date.today().isoformat(),
         "threshold": threshold,
         "source": provider_name,
+        "slippage_bps": slippage_bps,
+        "costs": {
+            "stt_rate": STT_RATE,
+            "stamp_duty_rate": STAMP_DUTY_RATE,
+            "slippage_bps": slippage_bps,
+        },
         "results": results,
         "summary": summary,
     }
@@ -171,7 +285,10 @@ def write_json(report: dict[str, Any], path: Path) -> None:
 def write_csv(report: dict[str, Any], path: Path) -> None:
     fieldnames = [
         "ticker", "start", "end", "days_tested", "days_long",
-        "strategy_return", "buy_and_hold_return", "edge", "beat_buy_and_hold",
+        "strategy_return", "strategy_return_with_costs",
+        "buy_and_hold_return", "buy_and_hold_return_with_costs",
+        "edge", "edge_with_costs",
+        "beat_buy_and_hold", "beat_buy_and_hold_with_costs",
     ]
     with path.open("w", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=fieldnames)
@@ -180,37 +297,59 @@ def write_csv(report: dict[str, Any], path: Path) -> None:
             writer.writerow(r)
 
 
-def _markdown_table(report: dict[str, Any]) -> str:
+def _markdown_table(report: dict[str, Any], with_costs: bool = False) -> str:
+    """Same shape as the Day 7 table. ``with_costs`` swaps in the cost-adjusted fields."""
+    suffix = "_with_costs" if with_costs else ""
+    beat_key = "beat_buy_and_hold" + suffix
     header = "| Ticker | Window | Days tested | Days long | Strategy | Buy & hold | Edge | Beat B&H |"
     sep = "|--------|--------|-------------|-----------|----------|------------|------|----------|"
     rows = [header, sep]
     for r in report["results"]:
+        strategy_return = r["strategy_return" + suffix]
+        hold_return = r["buy_and_hold_return" + suffix]
+        edge = r["edge" + suffix]
         rows.append(
             f"| {r['ticker']} | {r['start']} to {r['end']} | {r['days_tested']} | {r['days_long']} "
-            f"| {r['strategy_return']:+.2%} | {r['buy_and_hold_return']:+.2%} | {r['edge']:+.2%} "
-            f"| {'yes' if r['beat_buy_and_hold'] else 'no'} |"
+            f"| {strategy_return:+.2%} | {hold_return:+.2%} | {edge:+.2%} "
+            f"| {'yes' if r[beat_key] else 'no'} |"
         )
     return "\n".join(rows)
 
 
 def write_markdown(report: dict[str, Any], errors: list[str], path: Path) -> None:
     s = report["summary"]
+    slippage_bps = report.get("slippage_bps", DEFAULT_SLIPPAGE_BPS)
     lines = [
         f"# Backtest sanity check — {report['generated']}",
         "",
         f"Walk-forward long/flat on the blended screen score (threshold {report['threshold']}), "
-        f"source {report['source']}. No costs, no shorting, no position sizing — "
-        "this checks the screen isn't obviously worse than doing nothing clever, "
-        "nothing more.",
+        f"source {report['source']}. No shorting, no position sizing. Reports both a no-cost "
+        "return and one after costs — STT (0.1% each side), stamp duty (0.015%, buy side only) "
+        f"and {slippage_bps:.0f} bps slippage on each trade — so neither number hides the other.",
         "",
     ]
     if report["results"]:
-        lines.append(_markdown_table(report))
+        lines += ["### No costs (Day 7)", ""]
+        lines.append(_markdown_table(report, with_costs=False))
         lines += [
             "",
             f"**{s['tickers_beating_buy_and_hold']}/{s['tickers_tested']}** ticker(s) beat "
             f"buy-and-hold. Mean strategy return {s['mean_strategy_return']:+.2%} vs. "
             f"mean buy-and-hold {s['mean_buy_and_hold_return']:+.2%}.",
+            "",
+            "### With costs (Day 8)",
+            "",
+        ]
+        lines.append(_markdown_table(report, with_costs=True))
+        lines += [
+            "",
+            f"**{s['tickers_beating_buy_and_hold_with_costs']}/{s['tickers_tested']}** "
+            f"ticker(s) beat buy-and-hold. Mean strategy return "
+            f"{s['mean_strategy_return_with_costs']:+.2%} vs. mean buy-and-hold "
+            f"{s['mean_buy_and_hold_return_with_costs']:+.2%} — buy-and-hold pays the same "
+            "cost schedule on its one entry and one exit, so this stays a fair comparison; "
+            "it barely moves the buy-and-hold number because it is one round trip, not one "
+            "per day.",
         ]
     else:
         lines.append("No tickers had enough history to test.")
@@ -227,8 +366,11 @@ def write_markdown(report: dict[str, Any], errors: list[str], path: Path) -> Non
         "were hand-picked, not fit on this data, but they were picked before this "
         "check existed to test them — later re-tuning against this same window "
         "would be in-sample.",
-        "- No transaction costs, slippage, or bid-ask spread. Real trading would erode "
-        "any edge shown here, especially with daily rebalancing.",
+        "- Costs are a flat percentage of position value per trade (STT, stamp duty, "
+        "slippage), not a real order-book fill. No bid-ask spread is modeled separately, "
+        "and the buy-and-hold leg pays the same per-trade cost schedule on its single "
+        "entry and exit — so the comparison is apples-to-apples, but still a simplification "
+        "of what either side would actually pay.",
         "- Long/flat only. No short leg, so a strategy that only avoids the worst "
         "days can still show a smaller loss than buy-and-hold without ever making money.",
     ]
@@ -237,18 +379,26 @@ def write_markdown(report: dict[str, Any], errors: list[str], path: Path) -> Non
 
 def print_report(report: dict[str, Any], errors: list[str]) -> None:
     s = report["summary"]
+    slippage_bps = report.get("slippage_bps", DEFAULT_SLIPPAGE_BPS)
     print(f"Backtest {report['generated']} — threshold {report['threshold']} ({report['source']})")
+    print(f"  costs: STT {STT_RATE:.2%}/side, stamp duty {STAMP_DUTY_RATE:.3%} (buy only), slippage {slippage_bps:.0f}bps")
     for r in report["results"]:
         verdict = "beats" if r["beat_buy_and_hold"] else "loses to"
+        verdict_with_costs = "beats" if r["beat_buy_and_hold_with_costs"] else "loses to"
         print(
-            f"  {r['ticker']:<14} strategy {r['strategy_return']:+.2%}  "
-            f"buy&hold {r['buy_and_hold_return']:+.2%}  ({verdict} buy&hold, "
+            f"  {r['ticker']:<14} strategy {r['strategy_return']:+.2%} -> {r['strategy_return_with_costs']:+.2%} "
+            f"with costs  buy&hold {r['buy_and_hold_return']:+.2%} -> {r['buy_and_hold_return_with_costs']:+.2%} "
+            f"({verdict} buy&hold no-cost, {verdict_with_costs} with costs, "
             f"{r['days_long']}/{r['days_tested']} days long)"
         )
     if report["results"]:
         print(
-            f"  {s['tickers_beating_buy_and_hold']}/{s['tickers_tested']} beat buy-and-hold — "
+            f"  {s['tickers_beating_buy_and_hold']}/{s['tickers_tested']} beat buy-and-hold (no cost) — "
             f"mean {s['mean_strategy_return']:+.2%} vs {s['mean_buy_and_hold_return']:+.2%}"
+        )
+        print(
+            f"  {s['tickers_beating_buy_and_hold_with_costs']}/{s['tickers_tested']} beat buy-and-hold (with costs) — "
+            f"mean {s['mean_strategy_return_with_costs']:+.2%} vs {s['mean_buy_and_hold_return_with_costs']:+.2%}"
         )
     for e in errors:
         print(f"  ! {e}")
@@ -267,6 +417,12 @@ def main(argv: list[str] | None = None) -> int:
         "--offline", action="store_true", help="explicit fixtures path (already the default)"
     )
     parser.add_argument("--date", default=None, help="override the generated date (mainly for tests)")
+    parser.add_argument(
+        "--slippage-bps",
+        type=float,
+        default=DEFAULT_SLIPPAGE_BPS,
+        help="slippage in basis points, charged on each entry and exit (default 10)",
+    )
     args = parser.parse_args(argv)
 
     if args.live and args.offline:
@@ -282,7 +438,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     errors: list[str] = []
-    report = run_backtest(tickers, provider_name, cfg, args.threshold, generated, errors)
+    report = run_backtest(
+        tickers, provider_name, cfg, args.threshold, generated, errors, args.slippage_bps
+    )
 
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
