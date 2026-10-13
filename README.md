@@ -1,14 +1,99 @@
 # Stock Stalker
 
-Screens the NSE universe down to a shortlist worth researching properly, using trend, momentum, volume and liquidity signals. Command-line only: arguments in, ranked candidates and chart files out.
+The front door to a nine-repo equity research pipeline. One command —
 
-**Status:** Last checkpoint 2026-10-13 · Next: Day 9 - README rewritten as the front door: one command, what each section means, a link per satellite, limitations; correct the screen's claimed role (GULFOILLUB was hand-picked, not screener output); add a CHANGELOG entry; checkpoint with --status done --ship v0.9 (the release, no separate integration day)
+```bash
+python -m stockstalker.run --ticker GULFOILLUB --offline
+```
+
+— pulls together everything the other eight repos have ever found about one
+stock (Gulf Oil Lubricants India) and prints it as a single tear sheet,
+plus writes the same to `outputs/tearsheet_GULFOILLUB_<date>.md`. It also
+runs a separate, smaller daily screen over three unrelated NSE names —
+see "The screen is a separate, smaller thing" below for how the two relate.
+
+**Status:** Last checkpoint 2026-10-13 · Next: equity-research-initiation Day 1 - business and industry structure, value chain, unit economics
+
+## The front door
+
+`python -m stockstalker.run --ticker <TICKER> --offline` (GULFOILLUB is the
+default) prints, in this order:
+
+1. **Price section.** The subject's own trend/momentum/volume score and
+   20-day ADV — computed with the exact same `screener.compute_signals`,
+   `blended_score` and `liquidity_metrics` functions the daily screen uses,
+   so the number is provably the same math, not a lookalike. GULFOILLUB is
+   deliberately not in `data/universe.txt` (see below), so this is that
+   math run once, by hand, against the subject — the daily screen itself
+   never produces it.
+2. **Peer table.** GULFOILLUB against three listed lubricant peers —
+   CASTROLIND, SOTL, GANDHAR — on trailing 1y return, 1y annualised
+   volatility and 20d ADV. GANDHAR only has ~2.8 years of fixture history
+   (IPO 2023-11-30); any stat needing a full year prints `n/a` for it
+   rather than a shorter-window number under the same heading.
+3. **Six contract sections**, one per satellite, each read straight from
+   that repo's own file contract for GULFOILLUB — never through the
+   screen-gate pattern (`stockstalker.gates.*`'s `apply_*_gate`), which
+   only matches a ticker already in `data/universe.txt` and would never
+   match the subject:
+
+   | Section | From | What it is |
+   |---|---|---|
+   | `valuation` | [reverse-dcf-engine](https://github.com/Achintya1311/reverse-dcf-engine) | what growth, margin and reinvestment the market price already assumes |
+   | `fundamentals` | [three-statement-model](https://github.com/Achintya1311/three-statement-model) | 3-year forecast revenue CAGR, EBIT margin, net debt/EBITDA, and a balance-sheet check |
+   | `risk` | [monte-carlo-risk-lab](https://github.com/Achintya1311/monte-carlo-risk-lab) | simulated 1-day VaR/CVaR and max drawdown over a 20-day horizon |
+   | `factor` | [fama-french-factor-model](https://github.com/Achintya1311/fama-french-factor-model) | factor-adjusted alpha and loadings against Indian (IIMA) factors |
+   | `vol` | [implied-vol-surface](https://github.com/Achintya1311/implied-vol-surface) | options-implied ATM IV, 25-delta skew and term slope — unverified for GULFOILLUB, see Limitations |
+   | `sentiment` | [headline-sentiment-vs-price](https://github.com/Achintya1311/headline-sentiment-vs-price) | 7-day headline sentiment score and coverage |
+
+   `sizing` ([markowitz-portfolio-optimizer](https://github.com/Achintya1311/markowitz-portfolio-optimizer))
+   is left out of the front door on purpose, not for lack of a fixture: a
+   sector-capped weight across the subject and its three lubricant peers
+   would be a sector bet dressed up as a position size, not a number
+   anyone should act on.
+
+   Four of those six are genuine matches against GULFOILLUB's real
+   researched numbers (`valuation`, `fundamentals`, `risk`, `factor`). The
+   other two render as honest absences, not placeholders: `sentiment` is a
+   real zero (nothing in headline-sentiment-vs-price's ~50-headline corpus
+   names GULFOILLUB), and `vol` prints "unverified" because this sandbox's
+   network could not confirm whether GULFOILLUB even has an NSE option
+   chain — see Limitations for both.
+4. **Charts to `outputs/`** — three PNGs: GULFOILLUB vs. its three peers
+   rebased to 100, drawdown from peak, and rolling 1-year annualised
+   volatility. Pass `--no-charts` to skip them.
+5. **The tear sheet itself** — `outputs/tearsheet_<TICKER>_<date>.md`,
+   the same content as the terminal output, written every run.
+
+Run `python -m stockstalker.run --help` for `--peers`, `--live`, `--config`
+and the rest of the flags.
+
+## The screen is a separate, smaller thing
+
+`python -m stockstalker.screener`, `stockstalker.report` and
+`stockstalker.backtest` run a daily trend/momentum/volume monitor over
+three NSE names — RELIANCE, TATACHEM, CROMPTON — listed in
+`data/universe.txt`. Earlier versions of this README called the screen
+"the funnel" that narrows a universe down to the one name the rest of the
+pipeline researches. That was never actually true, and this is the
+correction: GULFOILLUB, the subject every satellite from `valuation`
+through the eventual note is built around, was picked by hand against
+written criteria — market cap band, thin analyst coverage, a sourceable
+ten years of annual reports — recorded in
+[`reverse-dcf-engine/research/shortlist.md`](https://github.com/Achintya1311/reverse-dcf-engine/blob/main/research/shortlist.md).
+GULFOILLUB has never been in `data/universe.txt` and this screener has
+never ranked it, scored it, or produced it as a candidate. The screen is a
+monitor on its own small, unrelated universe — useful on its own terms
+(see Findings) — not the process that chose the stock this repo's front
+door, or the capstone note, is actually about.
 
 ## What this is
 
-The spine of a nine-repo research pipeline. On its own it answers a narrow question — which names in the universe are behaving in a way that makes them worth a closer look. The value comes from what gets layered on top: factor adjustment, risk envelopes, sentiment, and finally a valuation and a written view.
-
-The screen is the funnel, not the product. What comes out the far end is an equity research note with an opinion in it. A ranked CSV is a starting point for research, and this README will not pretend otherwise.
+The spine of a nine-repo research pipeline. The screen above answers a
+narrow question on its own three-ticker universe — which of those names is
+behaving in a way worth a closer look. The front door above is the
+different, larger thing: one command showing everything the pipeline
+knows about the stock the capstone note is actually being written on.
 
 ## Honest status
 
@@ -156,6 +241,7 @@ numbers for both tables, every run, in `outputs/backtest_<date>.{json,csv,md}`.
 - Day 6 is an absence day, and both absences are real, not placeholders. `sentiment` is now filled for GULFOILLUB with a genuine zero: `python -m sentiment.contract --ticker GULFOILLUB.NS` against headline-sentiment-vs-price's ~50-headline Economic Times RSS snapshot returns `{"score_7d": null, "headline_count_7d": 0, "model": "vader", "coverage": "none"}`, because that repo's ticker table (`sentiment.tickers`) has no rule naming GULFOILLUB at all — a deliberately narrow, closed lookup (see that repo's README), not a filter that happened to exclude it. A count of zero from a ~50-headline single-source snapshot says nothing about this stock's real news coverage; it is a fact about the corpus, not about the company. `vol` stays unavailable, but the reason changed from "no fixture yet" to an investigated "unverified": a live check against NSE's own option-chain endpoint (`volsurface.chain.NSEChainProvider`) was run from this sandbox for both GULFOILLUB and RELIANCE, and both came back with the identical empty `{}` payload after a 403 on the cookie warm-up — RELIANCE is known to have listed NSE options, so an empty response proves the sandbox's network is blocked here, not that GULFOILLUB has no option chain. `stockstalker.run.UNVERIFIED_CONTRACT_REASONS` carries that distinction into the tear sheet by name rather than letting the generic "fixture not found" line imply a negative that was never actually checked.
 - Day 7's three charts (`stockstalker.viz.charts`, written to `outputs/` by `stockstalker.run` unless `--no-charts`) are deliberately scoped narrower than "subject vs peers" everywhere: only the rebased comparison plots all four names, because NEXT_STEPS.md's "subject vs peers" qualifier sits on that one chart alone — drawdown and rolling volatility are GULFOILLUB only, a risk profile of the name the note is about, not a four-line reprise of the peer table. The rebased comparison is not one shared start date either: each series is divided by its own first close, so CASTROLIND and SOTL (both committed back to 2014-07-31, the same day as GULFOILLUB) rebase from day one of the subject's own history, but GANDHAR (IPO 2023-11-30) rebases from its own much later first day — the legend names each series' own start date so a ~3-year GANDHAR line is never misread as spanning the same ~11 years as the other three. These fixtures were pulled with `yfinance`'s `auto_adjust=True`, which already folds dividends into every close, so these are rebased total-return-ish series, not pure price.
 - Day 8's trading costs (`backtest.STT_RATE`, `backtest.STAMP_DUTY_RATE`, `--slippage-bps`) are a flat percentage of position value charged on each entry and exit, not a simulated order-book fill. There is no separate bid-ask spread, no market-impact model, and no partial fills — real execution on ~140-190 round trips a year on these small/mid-cap names would plausibly be worse, not better, than this estimate. `stockstalker.report`'s backtest table still shows only the no-cost numbers (it calls the same `run_backtest`, but renders `strategy_return`/`buy_and_hold_return`, not the `_with_costs` fields) — the cost-adjusted view only exists in this README's Findings section and in `outputs/backtest_<date>.{json,csv,md}`, not in the quick terminal screen.
+- Day 9 is a documentation day, not a code day — no module in `stockstalker/` changed. It corrects a framing error this README carried since Day 1 of the front-door project (and, before that, every earlier checkpoint note): calling the screen "the funnel" that narrows a universe down to the pipeline's one subject. That was never what happened. GULFOILLUB was chosen by hand in `reverse-dcf-engine/research/shortlist.md` against written criteria, and the screen's own 3-ticker universe (RELIANCE, TATACHEM, CROMPTON) has no overlap with it at all — a reader who took the old wording literally would have incorrectly concluded the screen ran over a larger universe at some point and produced GULFOILLUB as its output. It did not. This correction does not change any number in this README; it changes what the numbers are claimed to be downstream of.
 
 ## Where this sits
 

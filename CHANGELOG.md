@@ -1,5 +1,60 @@
 # Changelog
 
+## v0.9 one-ticker front door (package v0.9.0) — 2026-10-13
+
+One-ticker front door: every satellite module's view of GULFOILLUB in one tear
+sheet. The stockstalker-front-door project (hub project 9) finished its 9-day
+plan in pipeline order — v0.2 through v0.8 are all already shipped — so the
+package version bumps cleanly from 0.8.0 to 0.9.0, no out-of-sequence patch
+needed.
+
+**Ships (across Days 1-8, this release just closes the project out):**
+- `stockstalker.run` — `python -m stockstalker.run --ticker GULFOILLUB
+  --offline` prints a price section (the screen's own
+  `compute_signals`/`blended_score`/`liquidity_metrics`, run once against the
+  subject), a peer table (CASTROLIND, SOTL, GANDHAR), six contract sections
+  read directly from each satellite's file contract for GULFOILLUB (bypassing
+  the screen-gate pattern, which only matches tickers already in
+  `data/universe.txt`), three charts to `outputs/` (rebased comparison,
+  drawdown, rolling volatility), and a markdown tear sheet
+  (`outputs/tearsheet_<TICKER>_<date>.md`).
+- Real GULFOILLUB fixtures and contracts in four satellites that previously
+  only had RELIANCE/INFY data: `fixtures/risk/GULFOILLUB.json`
+  (monte-carlo-risk-lab, re-run against a copied-in GULFOILLUB price fixture),
+  `fixtures/factor/GULFOILLUB.json` (fama-french-factor-model, regressed
+  against IIM Ahmedabad's Indian factors instead of Ken French's), and
+  `fixtures/sentiment/GULFOILLUB.json` (headline-sentiment-vs-price, a
+  genuine zero-headline result). `valuation` and `fundamentals` already had
+  real GULFOILLUB contracts from v0.7 and v0.8; this release is what first
+  reads them by ticker instead of through the screen-gate non-match path.
+- `backtest.py` — real Indian delivery-equity trading costs (0.1% STT per
+  side, 0.015% stamp duty on the buy, a `--slippage-bps` flag) on every trade
+  in the Day 7 walk-forward backtest, applied identically to the
+  buy-and-hold benchmark so the costed comparison stays fair.
+- This README, rewritten as the front door: one command, what each of its
+  sections means and where it comes from, a link to every satellite, and the
+  corrected claim about how GULFOILLUB was actually chosen (see below).
+
+**Verified before tagging:**
+- `pytest` — 301 passed, 0 skipped
+- `python -m stockstalker.run --ticker GULFOILLUB --offline` — run by hand
+  end to end; all six contract sections render (four genuine matches, two
+  honest absences), three charts write to `outputs/`, the tear sheet writes
+  correctly
+- `python -m stockstalker.backtest --offline` and `python -m
+  stockstalker.report --offline` — run by hand against the real fixtures
+
+**Correction, not a new finding:** every checkpoint note up to and including
+Day 8 described the screen as "the funnel" that narrows a universe down to
+the pipeline's one subject. That framing was never accurate — GULFOILLUB was
+picked by hand against written criteria in
+`reverse-dcf-engine/research/shortlist.md`, has never been in
+`data/universe.txt`, and the screen has never ranked it or produced it as a
+candidate. The screen is a monitor on its own separate 3-ticker universe
+(RELIANCE, TATACHEM, CROMPTON); the README now says so plainly. No code or
+number in this repo changed because of this correction — only what the
+numbers are claimed to be downstream of.
+
 ## v0.8 fundamentals gate (package v0.8.0) — 2026-10-11
 
 Fundamental quality gate on survivors. three-statement-model finished its 8-day plan
