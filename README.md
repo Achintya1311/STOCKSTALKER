@@ -16,6 +16,8 @@ see "The screen is a separate, smaller thing" below for how the two relate.
 
 **Status:** Complete (v0.9, Oct 2026). `python -m stockstalker.run --ticker GULFOILLUB` reads every module's findings for the note's stock.
 
+*Educational research on historical data. Not investment advice. Not a SEBI-registered research analyst.*
+
 ## The front door
 
 `python -m stockstalker.run --ticker <TICKER> --offline` (GULFOILLUB is the
