@@ -34,9 +34,21 @@ def screen(cfg):
 
 
 def test_load_contract_reads_the_real_reverse_dcf_engine_fixture():
+    # reverse-dcf-engine's V2 fix (CRITIQUES.md V1, its hub) ties
+    # reinvestment to growth via ROIC and adds new, additive contract keys
+    # (median_roic, terminal_roic, price_reachable, ...) without dropping
+    # the original four -- load_contract only requires those four to be
+    # present (REQUIRED_VALUATION_KEYS - set(valuation)), it was never a
+    # promise that nothing else would ever be added, so this checks a
+    # superset rather than exact equality.
     loaded = valuation.load_contract(GULFOILLUB_CONTRACT)
-    assert set(loaded) == valuation.REQUIRED_VALUATION_KEYS
-    assert loaded["implied_cagr"] == pytest.approx(-0.004924241036374619)
+    assert valuation.REQUIRED_VALUATION_KEYS <= set(loaded)
+    # At GULFOILLUB's own committed market price, V2 finds no growth rate
+    # that reproduces it at all (reverse-dcf-engine's own
+    # tests/test_solve.py has the full finding) -- the contract says so
+    # honestly (None) rather than carrying V1's since-retracted -0.49%.
+    assert loaded["implied_cagr"] is None
+    assert loaded["price_reachable"] is False
 
 
 def test_load_contract_rejects_a_valuation_block_missing_keys(tmp_path):

@@ -1,8 +1,17 @@
 {
   "valuation": {
-    "implied_cagr": -0.004924241036374619,
+    "implied_cagr": null,
     "implied_ebit_margin": 0.133694140806081,
-    "implied_reinvestment": -0.15676712672476895,
-    "breakeven_growth": 0.035218048948726696
+    "implied_reinvestment": null,
+    "breakeven_growth": null,
+    "implied_reinvestment_terminal": null,
+    "median_roic": 0.25887134520602134,
+    "terminal_roic": 0.11610477172909299,
+    "price_reachable": false,
+    "max_achievable_price_10y": 962.0819858043324,
+    "growth_at_max_achievable_price_10y": 0.007915516084993034,
+    "breakeven_reachable": false,
+    "max_achievable_price_perpetual": 715.5156570453565,
+    "growth_at_max_achievable_price_perpetual": 0.11609717839827302
   }
 }

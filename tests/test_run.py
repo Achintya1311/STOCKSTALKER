@@ -174,7 +174,13 @@ def test_build_contract_section_reads_real_fixture_for_subject():
     )
     assert section["available"] is True
     assert section["source"] == "reverse-dcf-engine"
-    assert section["data"]["implied_cagr"] == pytest.approx(-0.004924241036374619)
+    # reverse-dcf-engine's V2 fix (CRITIQUES.md V1) replaced the fixed
+    # reinvestment rate that produced the old -0.49% figure; at GULFOILLUB's
+    # own committed market price the growth-consistent model finds no
+    # implied growth at all, reported as None, not a crash -- see that
+    # repo's own tests/test_solve.py for the full finding.
+    assert section["data"]["implied_cagr"] is None
+    assert section["data"]["price_reachable"] is False
 
 
 def test_build_contract_section_reports_missing_fixture_with_reason():
