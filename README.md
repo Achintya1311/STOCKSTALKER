@@ -1,5 +1,7 @@
 # Stock Stalker
 
+Educational research on historical data. Not investment advice. Not a SEBI-registered research analyst.
+
 The front door to a nine-repo equity research pipeline. One command —
 
 ```bash
