@@ -12,7 +12,7 @@ plus writes the same to `outputs/tearsheet_GULFOILLUB_<date>.md`. It also
 runs a separate, smaller daily screen over three unrelated NSE names —
 see "The screen is a separate, smaller thing" below for how the two relate.
 
-**Status:** Last checkpoint 2026-10-13 · Next: equity-research-initiation Day 1 - business and industry structure, value chain, unit economics
+**Status:** Complete (v0.9, Oct 2026). `python -m stockstalker.run --ticker GULFOILLUB` reads every module's findings for the note's stock.
 
 ## The front door
 
