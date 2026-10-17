@@ -36,8 +36,18 @@ def screen(cfg):
 
 def test_load_contract_reads_the_real_monte_carlo_risk_lab_fixture():
     loaded = risk.load_contract(RELIANCE_CONTRACT)
-    assert set(loaded) == risk.REQUIRED_RISK_KEYS
+    # Day 6 (R5): the real fixture now also carries var_99/cvar_99/kupiec_95/kupiec_99 --
+    # additive, so the v0.3 keys this gate has always required are still all present.
+    assert risk.REQUIRED_RISK_KEYS <= set(loaded)
     assert loaded["var_95"] == pytest.approx(-0.09153951300729178)
+
+
+def test_load_contract_still_accepts_a_v03_shaped_block_with_no_day6_keys(tmp_path):
+    """Backward compatible: a contract that never got regenerated still loads."""
+    old_shaped = tmp_path / "old.json"
+    old_shaped.write_text(json.dumps({"risk": SYNTHETIC_RISK}))
+    loaded = risk.load_contract(old_shaped)
+    assert set(loaded) == risk.REQUIRED_RISK_KEYS
 
 
 def test_load_contract_rejects_a_risk_block_missing_keys(tmp_path):
@@ -150,6 +160,9 @@ def test_main_defaults_out_to_overwriting_the_screen_in_place(screen, tmp_path):
 
 
 def test_kupiec_note_cites_the_real_rejection_for_reliance_and_gulfoillub():
+    """No ``risk`` payload passed (the old call shape): still falls back to the
+    static, README-sourced table, so any caller that hasn't been touched yet
+    keeps working exactly as before Day 6."""
     reliance_note = risk.kupiec_note("RELIANCE")
     assert reliance_note is not None
     assert "REJECTED at 99%" in reliance_note
@@ -166,3 +179,35 @@ def test_kupiec_note_matches_without_the_ns_suffix():
 
 def test_kupiec_note_is_none_for_an_unlisted_ticker():
     assert risk.kupiec_note("TATACHEM") is None
+
+
+# -- Day 6 (R5): once the contract itself carries kupiec_95/kupiec_99, the note
+# is computed from those real fields instead of the hardcoded, README-sourced
+# table (which would otherwise go stale the moment the backtest is re-run).
+
+
+def test_kupiec_note_computes_the_verdict_from_the_real_contract_once_it_carries_kupiec_99():
+    real_risk = risk.load_contract(RELIANCE_CONTRACT)
+    assert "kupiec_99" in real_risk
+    note = risk.kupiec_note("RELIANCE", real_risk)
+    assert note is not None
+    assert "not rejected at 95%" in note
+    assert "REJECTED at 99%" in note
+    assert "10/500" in note
+
+
+def test_kupiec_note_computes_the_double_rejection_for_gulfoillub():
+    gulf_risk = risk.load_contract(ROOT / "fixtures" / "risk" / "GULFOILLUB.json")
+    note = risk.kupiec_note("GULFOILLUB", gulf_risk)
+    assert note is not None
+    assert "REJECTED at both 95%" in note
+    assert "114/3,006" in note
+    assert "44/3,006" in note
+
+
+def test_kupiec_note_falls_back_to_the_static_table_for_a_v03_shaped_contract():
+    assert risk.kupiec_note("RELIANCE", SYNTHETIC_RISK) == risk.kupiec_note("RELIANCE")
+
+
+def test_kupiec_note_fallback_ignores_an_unrelated_risk_payload_without_kupiec_99():
+    assert risk.kupiec_note("TATACHEM", SYNTHETIC_RISK) is None

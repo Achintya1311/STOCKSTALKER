@@ -46,14 +46,18 @@ def _normalize_ticker(ticker: str) -> str:
 
 
 # R5: the v0.3 contract shape (``REQUIRED_RISK_KEYS`` above) only ever
-# carries the 95% historical VaR/CVaR. monte-carlo-risk-lab's own Kupiec
+# carried the 95% historical VaR/CVaR. monte-carlo-risk-lab's own Kupiec
 # proportion-of-failures backtest of the *parametric* 1-day VaR, run and
-# reported in that repo's README, never travels into this file -- a reader
-# of the gated screen or front door has no way to know it failed without
-# going back to that README. Carrying the figures into the contract itself
-# is Day 6 (CRITIQUES.md R5, new keys, regenerated fixtures); until then
-# this states what the contract leaves out, sourced to that README rather
-# than recomputed here.
+# reported in that repo's README, never traveled into this file -- a reader
+# of the gated screen or front door had no way to know it failed without
+# going back to that README. Day 6 (CRITIQUES.md R5) added ``var_99``,
+# ``cvar_99``, ``kupiec_95`` and ``kupiec_99`` to the contract itself (new
+# keys, additive -- ``REQUIRED_RISK_KEYS`` is unchanged) and regenerated
+# both fixtures, so the real backtest now renders directly from the
+# contract's own fields (``render_contract_section``/``contract_sections_markdown``
+# in ``stockstalker.run`` already print every key in a contract generically).
+# This static table is kept only as a fallback for a contract that hasn't
+# been regenerated yet -- see ``kupiec_note`` below.
 KUPIEC_NOTES: dict[str, str] = {
     "RELIANCE": (
         "Kupiec backtest (monte-carlo-risk-lab README): parametric 1-day VaR "
@@ -70,8 +74,44 @@ KUPIEC_NOTES: dict[str, str] = {
 }
 
 
-def kupiec_note(ticker: str) -> str | None:
-    """A one-line caveat on the 99%/Kupiec gap this contract's shape leaves out, else None."""
+def _kupiec_verdict_note(risk: dict[str, Any]) -> str:
+    """Render the real ``kupiec_95``/``kupiec_99`` fields a Day-6 contract carries
+    as the same one-line, human-readable verdict ``KUPIEC_NOTES`` used to hand-write --
+    sourced to the file's own numbers this time, not a hardcoded guess."""
+    k95, k99 = risk["kupiec_95"], risk["kupiec_99"]
+    r95, r99 = k95["reject_at_5pct"], k99["reject_at_5pct"]
+
+    def fragment(level: str, k: dict[str, Any]) -> str:
+        word = "REJECTED" if k["reject_at_5pct"] else "not rejected"
+        return (
+            f"{word} at {level}% ({k['n_exceptions']}/{k['n_obs']:,} vs "
+            f"{k['expected_exceptions']:.1f} expected, LR={k['lr_stat']:.3f}, p={k['p_value']:.4f})"
+        )
+
+    if r95 and r99:
+        verdict = f"REJECTED at both 95% ({fragment('95', k95).split('(', 1)[1]} and 99% ({fragment('99', k99).split('(', 1)[1]}"
+    elif not r95 and not r99:
+        verdict = f"not rejected at either 95% ({fragment('95', k95).split('(', 1)[1]} or 99% ({fragment('99', k99).split('(', 1)[1]}"
+    else:
+        first, second = ("95", "99") if r95 else ("99", "95")
+        k_first, k_second = (k95, k99) if r95 else (k99, k95)
+        verdict = f"{fragment(first, k_first)} but {fragment(second, k_second)}"
+
+    return f"Kupiec backtest (this contract's own fields): parametric 1-day VaR {verdict}."
+
+
+def kupiec_note(ticker: str, risk: dict[str, Any] | None = None) -> str | None:
+    """A one-line verdict summary of the Kupiec backtest for this ticker's VaR model.
+
+    ``risk`` is the loaded contract block for this ticker, when the caller has
+    it to hand. Once it carries ``kupiec_99`` (Day 6), the verdict is computed
+    straight from those real fields instead of a hardcoded guess -- see
+    ``_kupiec_verdict_note``. Falls back to the static, README-sourced table
+    for any contract that still only has the v0.3 shape, or when the caller
+    passes no ``risk`` at all (the pre-Day-6 call shape).
+    """
+    if risk is not None and "kupiec_99" in risk:
+        return _kupiec_verdict_note(risk)
     return KUPIEC_NOTES.get(_normalize_ticker(ticker))
 
 

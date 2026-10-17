@@ -3,6 +3,26 @@
     "var_95": -0.11719731979427389,
     "cvar_95": -0.1771389114715916,
     "max_dd_sim": -0.0877845686293499,
-    "horizon_days": 20
+    "horizon_days": 20,
+    "var_99": -0.2227853209265268,
+    "cvar_99": -0.28692655527996896,
+    "kupiec_95": {
+      "n_obs": 3006,
+      "n_exceptions": 114,
+      "expected_exceptions": 150.30000000000013,
+      "exception_rate": 0.03792415169660679,
+      "lr_stat": 10.03233630431555,
+      "p_value": 0.0015381581757442087,
+      "reject_at_5pct": true
+    },
+    "kupiec_99": {
+      "n_obs": 3006,
+      "n_exceptions": 44,
+      "expected_exceptions": 30.060000000000027,
+      "exception_rate": 0.014637391882900865,
+      "lr_stat": 5.71289438618345,
+      "p_value": 0.016840750679291916,
+      "reject_at_5pct": true
+    }
   }
 }

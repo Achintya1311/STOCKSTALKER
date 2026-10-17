@@ -398,7 +398,7 @@ def main(argv: list[str] | None = None) -> int:
     console.print(render_screen_table(screen))
     for c in screen["candidates"]:
         if "risk" in c:
-            note = kupiec_note(c["ticker"])
+            note = kupiec_note(c["ticker"], c["risk"])
             if note:
                 console.print(f"[dim]· {c['ticker']} risk: {note}[/dim]")
         if "factor" in c:

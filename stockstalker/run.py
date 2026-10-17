@@ -311,10 +311,11 @@ SIZING_EXCLUSION_NOTE = (
 )
 
 
-def contract_section_note(namespace: str, ticker: str) -> str | None:
-    """A one-line caveat for this (namespace, ticker), beyond the contract's own fields (R5, R6)."""
+def contract_section_note(section: dict[str, Any], ticker: str) -> str | None:
+    """A one-line caveat for this contract section, beyond its own fields (R5, R6)."""
+    namespace = section["namespace"]
     if namespace == "risk":
-        return gate_risk.kupiec_note(ticker)
+        return gate_risk.kupiec_note(ticker, section.get("data"))
     if namespace == "factor":
         return gate_factor.method_label(ticker)
     return None
@@ -349,7 +350,7 @@ def contract_sections_markdown(sections: list[dict[str, Any]], ticker: str) -> l
                 if section["namespace"] == "factor" and key == "significant":
                     value = gate_factor.significance_label(value)
                 lines.append(f"| {key} | {_fmt_scalar(value)} |")
-        note = contract_section_note(section["namespace"], ticker)
+        note = contract_section_note(section, ticker)
         if note:
             lines.append("")
             lines.append(f"> {note}")
@@ -480,7 +481,7 @@ def main(argv: list[str] | None = None) -> int:
     console.print(render_peer_table(peer_rows))
     for section in contract_sections:
         console.print(render_contract_section(section))
-        note = contract_section_note(section["namespace"], args.ticker)
+        note = contract_section_note(section, args.ticker)
         if note:
             console.print(f"  [dim]{note}[/dim]")
     console.print(f"[dim]· sizing {SIZING_EXCLUSION_NOTE}[/dim]")
