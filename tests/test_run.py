@@ -521,6 +521,13 @@ def test_build_subject_section_works_for_a_ticker_outside_the_lubricant_sector(c
 def test_cli_builds_a_full_tearsheet_for_a_non_lubricant_ticker(tmp_path, capsys):
     # No --peers override: the default lubricant peer list is irrelevant to
     # a tech stock, and the CLI must still run end to end without it.
+    # --risk-lab-root points at a directory that doesn't exist, so this
+    # stays deterministic regardless of whether a real monte-carlo-risk-lab
+    # sibling checkout happens to sit next to this repo in the environment
+    # running the test (Day 21/C1 made risk the one namespace that no
+    # longer needs a committed fixture when that sibling is present and
+    # reachable -- see test_cli_end_to_end_generates_a_live_risk_section_
+    # for_an_uncommitted_ticker below for that path).
     rc = run.main(
         [
             "--ticker",
@@ -533,14 +540,17 @@ def test_cli_builds_a_full_tearsheet_for_a_non_lubricant_ticker(tmp_path, capsys
             "--output-dir",
             str(tmp_path),
             "--no-charts",
+            "--risk-lab-root",
+            str(tmp_path / "no-such-sibling-checkout"),
         ]
     )
     assert rc == 0
     text = (tmp_path / "tearsheet_TATAELXSI_2026-10-17.md").read_text()
     assert "TATAELXSI" in text
-    # Every contract namespace has no fixture for this ticker, so each one
-    # must render its own one-line reason -- never a placeholder or a blank
-    # section, and never another ticker's contract.
+    # Every contract namespace has no fixture for this ticker and no usable
+    # fallback either, so each one must render its own one-line reason --
+    # never a placeholder or a blank section, and never another ticker's
+    # contract.
     for namespace in [n for n, _, _ in run.CONTRACT_NAMESPACES]:
         assert f"### {namespace.capitalize()}" in text
     assert "Not available" in text
@@ -577,3 +587,120 @@ def test_build_peer_table_dedupes_a_subject_that_is_also_a_default_peer():
 def test_build_peer_table_dedup_is_case_insensitive():
     rows = run.build_peer_table(["castrolind", "CASTROLIND", "SOTL"], "fixtures")
     assert [r["ticker"] for r in rows] == ["CASTROLIND", "SOTL"]
+
+
+# -- Day 21 (C1): any-stock tear sheet, risk section -------------------------
+#
+# monte-carlo-risk-lab's GULFOILLUB/RELIANCE risk fixtures are hand-verified
+# and committed; this day adds a live fallback, generated on the fly as a
+# subprocess into the sibling checkout, for a ticker with no committed
+# fixture. ``run.generate_risk_contract`` is monkeypatched throughout so
+# these tests exercise this repo's own wiring deterministically, without
+# ever invoking uv or a real sibling checkout -- that real, end-to-end path
+# is exercised separately in test_live_risk_contract_smoke.py, which skips
+# cleanly when no sibling checkout is actually present (same pattern as
+# test_live_provider_smoke.py for yfinance).
+
+LIVE_RISK_CONTRACT = {
+    "risk": {"var_95": -0.1, "cvar_95": -0.15, "max_dd_sim": -0.05, "horizon_days": 20}
+}
+
+
+def _fake_generate_risk_contract(prices_csv, out_path, risk_lab_root):
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(LIVE_RISK_CONTRACT))
+    return None
+
+
+def test_build_live_risk_section_returns_none_when_price_data_is_missing(tmp_path):
+    assert run.build_live_risk_section("NOTATICKER", "fixtures", tmp_path) is None
+
+
+def test_build_live_risk_section_accepts_a_plain_string_root(tmp_path):
+    # argparse hands --risk-lab-root to build_contract_sections as a plain
+    # str, not a Path (the bug this guards against: generate_risk_contract
+    # called .is_dir() on that str directly and crashed with AttributeError
+    # before even reaching the "sibling missing" reason it was meant to
+    # report).
+    missing_root_as_str = str(tmp_path / "no-such-sibling-checkout")
+    section = run.build_live_risk_section("TATAELXSI", "fixtures", tmp_path, risk_lab_root=missing_root_as_str)
+    assert section is None
+
+
+def test_build_live_risk_section_returns_none_on_generation_failure(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_risk_contract", lambda *a, **k: "sibling missing")
+    section = run.build_live_risk_section("TATAELXSI", "fixtures", tmp_path, risk_lab_root=tmp_path)
+    assert section is None
+
+
+def test_build_live_risk_section_builds_an_available_section(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_risk_contract", _fake_generate_risk_contract)
+    section = run.build_live_risk_section("TATAELXSI", "fixtures", tmp_path, risk_lab_root=tmp_path)
+    assert section == {
+        "namespace": "risk",
+        "available": True,
+        "source": "monte-carlo-risk-lab (live)",
+        "data": LIVE_RISK_CONTRACT["risk"],
+    }
+    assert (tmp_path / "contracts" / "TATAELXSI" / "risk.json").exists()
+
+
+def test_build_contract_sections_never_regenerates_a_committed_risk_fixture(monkeypatch):
+    # The hand-verified GULFOILLUB/RELIANCE risk fixtures must never be
+    # regenerated live -- live generation must not even be attempted when
+    # the committed fixture already answers the namespace.
+    def fail(*a, **k):
+        raise AssertionError("must not attempt live generation when a committed fixture exists")
+
+    monkeypatch.setattr(run, "generate_risk_contract", fail)
+    sections = run.build_contract_sections("GULFOILLUB", FIXTURES)
+    risk_section = next(s for s in sections if s["namespace"] == "risk")
+    assert risk_section["available"] is True
+    assert risk_section["source"] == "monte-carlo-risk-lab"
+
+
+def test_build_contract_sections_falls_back_to_live_generation_for_an_uncommitted_ticker(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setattr(run, "generate_risk_contract", _fake_generate_risk_contract)
+    sections = run.build_contract_sections(
+        "TATAELXSI", FIXTURES, provider_name="fixtures", output_dir=tmp_path, risk_lab_root=tmp_path
+    )
+    risk_section = next(s for s in sections if s["namespace"] == "risk")
+    assert risk_section["available"] is True
+    assert risk_section["source"] == "monte-carlo-risk-lab (live)"
+    assert risk_section["data"] == LIVE_RISK_CONTRACT["risk"]
+
+
+def test_build_contract_sections_keeps_not_available_when_live_generation_also_fails(monkeypatch):
+    monkeypatch.setattr(run, "generate_risk_contract", lambda *a, **k: "sibling missing")
+    sections = run.build_contract_sections("TATAELXSI", FIXTURES)
+    risk_section = next(s for s in sections if s["namespace"] == "risk")
+    assert risk_section["available"] is False
+    assert "not found" in risk_section["reason"]
+
+
+def test_cli_end_to_end_generates_a_live_risk_section_for_an_uncommitted_ticker(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_risk_contract", _fake_generate_risk_contract)
+    rc = run.main(
+        [
+            "--ticker",
+            "TATAELXSI",
+            "--peers",
+            "",
+            "--offline",
+            "--date",
+            "2026-10-17",
+            "--output-dir",
+            str(tmp_path),
+            "--no-charts",
+            "--risk-lab-root",
+            str(tmp_path),
+        ]
+    )
+    assert rc == 0
+    text = (tmp_path / "tearsheet_TATAELXSI_2026-10-17.md").read_text()
+    assert "### Risk" in text
+    assert "monte-carlo-risk-lab (live)" in text
+    assert "var_95" in text
+    assert (tmp_path / "contracts" / "TATAELXSI" / "risk.json").exists()

@@ -210,3 +210,24 @@ def load(ticker: str, provider: str = "fixtures", period: str = "2y", use_cache:
     df = source.fetch(ticker, period)
     df.to_csv(cached)
     return df
+
+
+def local_csv_path(ticker: str, provider: str = "fixtures", period: str = "2y", use_cache: bool = True) -> Path:
+    """The on-disk CSV ``load()`` serves ``ticker`` from, as a real file path.
+
+    Calls ``load()`` first (cheap once cached) purely to make sure the file
+    actually exists on disk -- a committed fixture always does, but a live
+    provider's bars are only ever written to ``CACHE_DIR`` as a side effect
+    of ``load()`` itself. A caller that needs a real file (not a DataFrame
+    in memory), such as a subprocess shelling out to a sibling repo's own
+    CLI, gets exactly the data ``load()`` would hand back, not a second,
+    separately-fetched copy of it.
+
+    Raises :class:`ProviderError` under the same conditions ``load()``
+    does (no fixture, bad ticker, network failure) -- there is no file to
+    point at when the fetch itself failed.
+    """
+    load(ticker, provider=provider, period=period, use_cache=use_cache)
+    if provider == "fixtures" or not use_cache:
+        return FixtureProvider().directory / f"{ticker.replace('.', '_')}.csv"
+    return CACHE_DIR / f"{provider}_{ticker.replace('.', '_')}_{period}.csv"

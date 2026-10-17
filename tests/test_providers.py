@@ -136,3 +136,18 @@ def test_load_defaults_to_fixtures():
 def test_get_provider_rejects_unknown_names():
     with pytest.raises(ValueError, match="unknown provider"):
         providers.get_provider("bloomberg")
+
+
+# -- Day 21 (C1): local_csv_path, a real file for a subprocess to read -----
+
+
+def test_local_csv_path_for_fixtures_points_at_the_committed_file():
+    path = providers.local_csv_path("TATACHEM.NS", provider="fixtures")
+    assert path == providers.FIXTURE_DIR / "TATACHEM_NS.csv"
+    assert path.exists()
+    assert path.read_text().splitlines()[0].split(",")[0] == "date"
+
+
+def test_local_csv_path_raises_provider_error_for_unknown_fixture():
+    with pytest.raises(ProviderError, match="available:"):
+        providers.local_csv_path("NOTATICKER.NS", provider="fixtures")

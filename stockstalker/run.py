@@ -27,6 +27,15 @@ A namespace with no fixture file for the subject, or a malformed one,
 renders one explicit "not available" line instead of silently omitting
 the section or standing in a contract for a different ticker.
 
+Day 21 (C1) adds one exception to "read a committed fixture, nothing
+more": when ``risk`` has no committed fixture for the subject, the front
+door generates one on the fly, as a subprocess running monte-carlo-risk-lab's
+own ``mcsim.portfolio`` CLI against the sibling checkout on the subject's
+own price data -- still a file contract, never a cross-repo import, just
+written on demand instead of ahead of time (see ``build_live_risk_section``
+and ``live_contracts.generate_risk_contract``). A committed fixture, where
+one exists (GULFOILLUB, RELIANCE), always wins over this path.
+
 ``sizing`` is deliberately left out: markowitz-portfolio-optimizer's
 sector-capped weight is a position size *within a screened universe of
 candidates*, and a sector-capped weight across the subject plus its three
@@ -46,13 +55,14 @@ from typing import Any
 from rich.console import Console
 from rich.table import Table
 
-from .data.providers import ProviderError, load
+from .data.providers import ProviderError, load, local_csv_path
 from .gates import factor as gate_factor
 from .gates import fundamentals as gate_fundamentals
 from .gates import risk as gate_risk
 from .gates import sentiment as gate_sentiment
 from .gates import valuation as gate_valuation
 from .gates import vol as gate_vol
+from .live_contracts import generate_risk_contract, resolve_risk_lab_root
 from .screener import CONFIG_PATH, blended_score, compute_signals, liquidity_metrics, load_config
 from .viz import charts as viz_charts
 
@@ -302,12 +312,67 @@ def build_contract_section(
     return {"namespace": namespace, "available": True, "source": source_repo, "data": data}
 
 
-def build_contract_sections(ticker: str, fixtures_dir: Path | None = None) -> list[dict[str, Any]]:
+def build_live_risk_section(
+    ticker: str,
+    provider_name: str,
+    output_dir: Path,
+    risk_lab_root: Path | str | None = None,
+) -> dict[str, Any] | None:
+    """Day 21 (C1): generate the risk contract on the fly, via
+    monte-carlo-risk-lab's own CLI run as a subprocess against the sibling
+    checkout, for a ticker with no committed ``fixtures/risk/<TICKER>.json``.
+
+    Writes ``<output_dir>/contracts/<TICKER>/risk.json`` -- a build
+    artifact under ``outputs/``, never committed, unlike the hand-verified
+    GULFOILLUB/RELIANCE fixtures this path never touches (see
+    ``build_contract_sections``, which only calls this once the committed
+    fixture is confirmed absent).
+
+    Returns ``None``, never a crash, when the price data isn't available
+    for this ticker, or when the sibling checkout/``uv``/the subprocess
+    itself isn't -- the caller keeps the existing "no fixture" reason in
+    that case, the same honest degradation every other namespace already
+    has for a ticker nobody has built a fixture for yet.
+    """
+    try:
+        prices_csv = local_csv_path(to_yf_ticker(ticker), provider=provider_name)
+    except ProviderError:
+        return None
+    # ``risk_lab_root`` arrives as a plain string from argparse's
+    # --risk-lab-root, not a Path -- resolve_risk_lab_root() itself accepts
+    # either, but an explicit override skips that call entirely, so this
+    # must normalize it too, not just the default.
+    risk_lab_root = Path(risk_lab_root) if risk_lab_root else resolve_risk_lab_root()
+    out_path = output_dir / "contracts" / ticker.upper() / "risk.json"
+    error = generate_risk_contract(prices_csv, out_path, risk_lab_root)
+    if error is not None:
+        return None
+    try:
+        data = gate_risk.load_contract(out_path)
+    except (ValueError, OSError, json.JSONDecodeError):
+        return None
+    return {"namespace": "risk", "available": True, "source": "monte-carlo-risk-lab (live)", "data": data}
+
+
+def build_contract_sections(
+    ticker: str,
+    fixtures_dir: Path | None = None,
+    *,
+    provider_name: str = "fixtures",
+    output_dir: Path | None = None,
+    risk_lab_root: Path | str | None = None,
+) -> list[dict[str, Any]]:
     fixtures_dir = fixtures_dir or FIXTURES_DIR
-    return [
-        build_contract_section(namespace, gate_module, source_repo, ticker, fixtures_dir)
-        for namespace, gate_module, source_repo in CONTRACT_NAMESPACES
-    ]
+    output_dir = output_dir or OUTPUT_DIR
+    sections = []
+    for namespace, gate_module, source_repo in CONTRACT_NAMESPACES:
+        section = build_contract_section(namespace, gate_module, source_repo, ticker, fixtures_dir)
+        if namespace == "risk" and not section["available"]:
+            live_section = build_live_risk_section(ticker, provider_name, output_dir, risk_lab_root)
+            if live_section is not None:
+                section = live_section
+        sections.append(section)
+    return sections
 
 
 # R7: the one line explaining why `sizing` never appears in CONTRACT_NAMESPACES
@@ -463,6 +528,16 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="skip writing the rebased/drawdown/volatility PNGs",
     )
+    parser.add_argument(
+        "--risk-lab-root",
+        default=None,
+        help=(
+            "monte-carlo-risk-lab checkout to shell out to when no "
+            "fixtures/risk/<TICKER>.json is committed (default: the "
+            "STOCKSTALKER_RISK_LAB_ROOT env var, or the sibling checkout "
+            "next to this repo)"
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.live and args.offline:
@@ -472,6 +547,8 @@ def main(argv: list[str] | None = None) -> int:
     cfg = load_config(Path(args.config))
     peers = [p.strip() for p in args.peers.split(",") if p.strip()]
     generated = args.date or date.today().isoformat()
+    out_dir = Path(args.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     console = Console()
     errors: list[str] = []
@@ -483,7 +560,12 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     peer_rows = build_peer_table([args.ticker, *peers], provider_name, errors)
-    contract_sections = build_contract_sections(args.ticker)
+    contract_sections = build_contract_sections(
+        args.ticker,
+        provider_name=provider_name,
+        output_dir=out_dir,
+        risk_lab_root=args.risk_lab_root,
+    )
 
     console.print(render_subject_table(subject))
     console.print(render_peer_table(peer_rows))
@@ -493,9 +575,6 @@ def main(argv: list[str] | None = None) -> int:
         if note:
             console.print(f"  [dim]{note}[/dim]")
     console.print(f"[dim]· sizing {SIZING_EXCLUSION_NOTE}[/dim]")
-
-    out_dir = Path(args.output_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
 
     chart_paths: list[Path] = []
     if not args.no_charts:
