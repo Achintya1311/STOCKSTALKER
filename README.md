@@ -93,6 +93,12 @@ monitor on its own small, unrelated universe — useful on its own terms
 (see Findings) — not the process that chose the stock this repo's front
 door, or the capstone note, is actually about.
 
+Growing this list to a real, point-in-time NSE F&O universe (the monthly
+`fo_mktlots.csv` snapshot plus history from the F&O and equity bhavcopy,
+survivorship-checked) is lab-phase work in `stockstalker-lab`, not
+something this repo does on its own — see `PLAN.md` §3 and D6 in the
+hub's `CRITIQUES.md` for why point-in-time matters here.
+
 ## What this is
 
 The spine of a nine-repo research pipeline. The screen above answers a
