@@ -497,3 +497,83 @@ def test_cli_no_charts_skips_png_output(tmp_path):
     assert not (tmp_path / "rebased_GULFOILLUB.png").exists()
     text = (tmp_path / "tearsheet_GULFOILLUB_2026-10-12.md").read_text()
     assert "## Charts" not in text
+
+
+# -- Day 20 (C1): any-stock tear sheet, price section ------------------------
+#
+# GULFOILLUB and its three lubricant peers are all the committed fixtures
+# exercised so far; every test above could pass even if the front door were
+# secretly hard-wired to that one sector. TATAELXSI is a real NSE F&O
+# underlying (fo_mktlots.csv) with no connection to GULFOILLUB or its peer
+# list, fetched live via yfinance and committed as a fixture precisely to
+# prove the price section (signals, score, liquidity, 1y return/volatility)
+# is a real "any ticker" computation, not a GULFOILLUB-shaped special case.
+
+
+def test_build_subject_section_works_for_a_ticker_outside_the_lubricant_sector(cfg):
+    subject = run.build_subject_section("TATAELXSI", "fixtures", cfg)
+    assert subject["ticker"] == "TATAELXSI"
+    assert subject["close"] > 0
+    assert set(subject["signals"]) == {"trend", "momentum", "volume"}
+    assert subject["liquidity"]["adv_20d"] > 0
+
+
+def test_cli_builds_a_full_tearsheet_for_a_non_lubricant_ticker(tmp_path, capsys):
+    # No --peers override: the default lubricant peer list is irrelevant to
+    # a tech stock, and the CLI must still run end to end without it.
+    rc = run.main(
+        [
+            "--ticker",
+            "TATAELXSI",
+            "--peers",
+            "",
+            "--offline",
+            "--date",
+            "2026-10-17",
+            "--output-dir",
+            str(tmp_path),
+            "--no-charts",
+        ]
+    )
+    assert rc == 0
+    text = (tmp_path / "tearsheet_TATAELXSI_2026-10-17.md").read_text()
+    assert "TATAELXSI" in text
+    # Every contract namespace has no fixture for this ticker, so each one
+    # must render its own one-line reason -- never a placeholder or a blank
+    # section, and never another ticker's contract.
+    for namespace in [n for n, _, _ in run.CONTRACT_NAMESPACES]:
+        assert f"### {namespace.capitalize()}" in text
+    assert "Not available" in text
+    captured = capsys.readouterr()
+    assert "tear sheet:" in captured.out
+
+
+def test_vol_reason_distinguishes_no_listed_options_from_no_contract_yet():
+    # CASTROLIND is absent from fo_mktlots.csv -- a definite "not F&O at
+    # all". TATAELXSI is present in it (a real F&O underlying) but has no
+    # implied-vol-surface fixture committed -- the generic "not built yet"
+    # reason, not the F&O-absence one. Conflating the two would misreport
+    # a real F&O stock as having no listed options.
+    castrolind = run.build_contract_section(
+        "vol", run.gate_vol, "implied-vol-surface", "CASTROLIND", FIXTURES
+    )
+    tataelxsi = run.build_contract_section(
+        "vol", run.gate_vol, "implied-vol-surface", "TATAELXSI", FIXTURES
+    )
+    assert "no listed options" in castrolind["reason"]
+    assert "no listed options" not in tataelxsi["reason"]
+    assert "not found" in tataelxsi["reason"]
+    assert "TATAELXSI" in run.load_fo_underlyings()
+
+
+def test_build_peer_table_dedupes_a_subject_that_is_also_a_default_peer():
+    # CASTROLIND is both a valid --ticker and one of GULFOILLUB's own
+    # DEFAULT_PEERS. Running the CLI on CASTROLIND with the untouched
+    # default --peers must not print the same ticker's row twice.
+    rows = run.build_peer_table(["CASTROLIND", *run.DEFAULT_PEERS], "fixtures")
+    assert [r["ticker"] for r in rows] == ["CASTROLIND", "SOTL", "GANDHAR"]
+
+
+def test_build_peer_table_dedup_is_case_insensitive():
+    rows = run.build_peer_table(["castrolind", "CASTROLIND", "SOTL"], "fixtures")
+    assert [r["ticker"] for r in rows] == ["CASTROLIND", "SOTL"]

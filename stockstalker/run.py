@@ -130,12 +130,20 @@ def build_peer_table(
     """One row per ticker: trailing 1y return, 1y annualised volatility, 20d ADV.
 
     A ticker whose fixture fails to load is skipped and recorded in
-    ``errors``, not silently dropped.
+    ``errors``, not silently dropped. Case-insensitive duplicates (the
+    subject coinciding with one of its own default peers, as GULFOILLUB's
+    lubricant peer list can for an arbitrary subject -- e.g. ``--ticker
+    CASTROLIND`` with the untouched default ``--peers``) collapse to the
+    first occurrence rather than printing the same row twice.
     """
     if errors is None:
         errors = []
+    seen: set[str] = set()
     rows = []
     for ticker in tickers:
+        if ticker.upper() in seen:
+            continue
+        seen.add(ticker.upper())
         try:
             df = load(to_yf_ticker(ticker), provider=provider_name)
         except ProviderError as exc:
