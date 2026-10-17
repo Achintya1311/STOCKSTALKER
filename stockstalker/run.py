@@ -36,6 +36,13 @@ written on demand instead of ahead of time (see ``build_live_risk_section``
 and ``live_contracts.generate_risk_contract``). A committed fixture, where
 one exists (GULFOILLUB, RELIANCE), always wins over this path.
 
+Day 22 (C1) adds the same exception for ``factor``: a subprocess running
+fama-french-factor-model's ``factors.stock`` CLI (the Day 22 ticker-agnostic
+generalisation of ``factors.gulfoillub``) against the subject's own price
+data (see ``build_live_factor_section`` and
+``live_contracts.generate_factor_contract``). Same rule: a committed
+fixture (GULFOILLUB, RELIANCE) always wins.
+
 ``sizing`` is deliberately left out: markowitz-portfolio-optimizer's
 sector-capped weight is a position size *within a screened universe of
 candidates*, and a sector-capped weight across the subject plus its three
@@ -62,7 +69,12 @@ from .gates import risk as gate_risk
 from .gates import sentiment as gate_sentiment
 from .gates import valuation as gate_valuation
 from .gates import vol as gate_vol
-from .live_contracts import generate_risk_contract, resolve_risk_lab_root
+from .live_contracts import (
+    generate_factor_contract,
+    generate_risk_contract,
+    resolve_factor_model_root,
+    resolve_risk_lab_root,
+)
 from .screener import CONFIG_PATH, blended_score, compute_signals, liquidity_metrics, load_config
 from .viz import charts as viz_charts
 
@@ -354,6 +366,40 @@ def build_live_risk_section(
     return {"namespace": "risk", "available": True, "source": "monte-carlo-risk-lab (live)", "data": data}
 
 
+def build_live_factor_section(
+    ticker: str,
+    provider_name: str,
+    output_dir: Path,
+    factor_model_root: Path | str | None = None,
+) -> dict[str, Any] | None:
+    """Day 22 (C1): generate the factor contract on the fly, via
+    fama-french-factor-model's ``factors.stock`` CLI (the Day 22
+    ticker-agnostic generalisation of ``factors.gulfoillub``) run as a
+    subprocess against the sibling checkout, for a ticker with no
+    committed ``fixtures/factor/<TICKER>.json``.
+
+    Same shape and the same honest degradation as ``build_live_risk_section``
+    (Day 21): writes ``<output_dir>/contracts/<TICKER>/factor.json``, a
+    build artifact never committed, and returns ``None`` rather than
+    crashing when the price data, the sibling checkout, ``uv``, or the
+    subprocess itself isn't available.
+    """
+    try:
+        prices_csv = local_csv_path(to_yf_ticker(ticker), provider=provider_name)
+    except ProviderError:
+        return None
+    factor_model_root = Path(factor_model_root) if factor_model_root else resolve_factor_model_root()
+    out_path = output_dir / "contracts" / ticker.upper() / "factor.json"
+    error = generate_factor_contract(ticker, prices_csv, out_path, factor_model_root)
+    if error is not None:
+        return None
+    try:
+        data = gate_factor.load_contract(out_path)
+    except (ValueError, OSError, json.JSONDecodeError):
+        return None
+    return {"namespace": "factor", "available": True, "source": "fama-french-factor-model (live)", "data": data}
+
+
 def build_contract_sections(
     ticker: str,
     fixtures_dir: Path | None = None,
@@ -361,6 +407,7 @@ def build_contract_sections(
     provider_name: str = "fixtures",
     output_dir: Path | None = None,
     risk_lab_root: Path | str | None = None,
+    factor_model_root: Path | str | None = None,
 ) -> list[dict[str, Any]]:
     fixtures_dir = fixtures_dir or FIXTURES_DIR
     output_dir = output_dir or OUTPUT_DIR
@@ -369,6 +416,10 @@ def build_contract_sections(
         section = build_contract_section(namespace, gate_module, source_repo, ticker, fixtures_dir)
         if namespace == "risk" and not section["available"]:
             live_section = build_live_risk_section(ticker, provider_name, output_dir, risk_lab_root)
+            if live_section is not None:
+                section = live_section
+        if namespace == "factor" and not section["available"]:
+            live_section = build_live_factor_section(ticker, provider_name, output_dir, factor_model_root)
             if live_section is not None:
                 section = live_section
         sections.append(section)
@@ -538,6 +589,16 @@ def main(argv: list[str] | None = None) -> int:
             "next to this repo)"
         ),
     )
+    parser.add_argument(
+        "--factor-model-root",
+        default=None,
+        help=(
+            "fama-french-factor-model checkout to shell out to when no "
+            "fixtures/factor/<TICKER>.json is committed (default: the "
+            "STOCKSTALKER_FACTOR_MODEL_ROOT env var, or the sibling checkout "
+            "next to this repo)"
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.live and args.offline:
@@ -565,6 +626,7 @@ def main(argv: list[str] | None = None) -> int:
         provider_name=provider_name,
         output_dir=out_dir,
         risk_lab_root=args.risk_lab_root,
+        factor_model_root=args.factor_model_root,
     )
 
     console.print(render_subject_table(subject))

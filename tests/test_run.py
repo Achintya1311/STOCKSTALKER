@@ -704,3 +704,118 @@ def test_cli_end_to_end_generates_a_live_risk_section_for_an_uncommitted_ticker(
     assert "monte-carlo-risk-lab (live)" in text
     assert "var_95" in text
     assert (tmp_path / "contracts" / "TATAELXSI" / "risk.json").exists()
+
+
+# -- Day 22 (C1): any-stock tear sheet, factor section ------------------------
+#
+# Same pattern as Day 21's risk section above: fama-french-factor-model's
+# GULFOILLUB/RELIANCE factor fixtures are hand-verified and committed; this
+# day adds a live fallback, generated on the fly as a subprocess into the
+# sibling checkout (via the Day 22 `factors.stock` CLI), for a ticker with
+# no committed fixture. ``run.generate_factor_contract`` is monkeypatched
+# throughout; the real, end-to-end path is exercised separately in
+# test_live_factor_contract_smoke.py.
+
+LIVE_FACTOR_CONTRACT = {
+    "factor": {
+        "alpha_annual": -0.17698,
+        "alpha_t": -0.98,
+        "significant": False,
+        "loadings": {"mkt": 0.522, "smb": 1.007, "hml": 1.326, "wml": -0.369},
+    }
+}
+
+
+def _fake_generate_factor_contract(ticker, prices_csv, out_path, factor_model_root):
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(LIVE_FACTOR_CONTRACT))
+    return None
+
+
+def test_build_live_factor_section_returns_none_when_price_data_is_missing(tmp_path):
+    assert run.build_live_factor_section("NOTATICKER", "fixtures", tmp_path) is None
+
+
+def test_build_live_factor_section_accepts_a_plain_string_root(tmp_path):
+    missing_root_as_str = str(tmp_path / "no-such-sibling-checkout")
+    section = run.build_live_factor_section("TATAELXSI", "fixtures", tmp_path, factor_model_root=missing_root_as_str)
+    assert section is None
+
+
+def test_build_live_factor_section_returns_none_on_generation_failure(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_factor_contract", lambda *a, **k: "sibling missing")
+    section = run.build_live_factor_section("TATAELXSI", "fixtures", tmp_path, factor_model_root=tmp_path)
+    assert section is None
+
+
+def test_build_live_factor_section_builds_an_available_section(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_factor_contract", _fake_generate_factor_contract)
+    section = run.build_live_factor_section("TATAELXSI", "fixtures", tmp_path, factor_model_root=tmp_path)
+    assert section == {
+        "namespace": "factor",
+        "available": True,
+        "source": "fama-french-factor-model (live)",
+        "data": LIVE_FACTOR_CONTRACT["factor"],
+    }
+    assert (tmp_path / "contracts" / "TATAELXSI" / "factor.json").exists()
+
+
+def test_build_contract_sections_never_regenerates_a_committed_factor_fixture(monkeypatch):
+    # The hand-verified GULFOILLUB/RELIANCE factor fixtures must never be
+    # regenerated live -- live generation must not even be attempted when
+    # the committed fixture already answers the namespace.
+    def fail(*a, **k):
+        raise AssertionError("must not attempt live generation when a committed fixture exists")
+
+    monkeypatch.setattr(run, "generate_factor_contract", fail)
+    sections = run.build_contract_sections("GULFOILLUB", FIXTURES)
+    factor_section = next(s for s in sections if s["namespace"] == "factor")
+    assert factor_section["available"] is True
+    assert factor_section["source"] == "fama-french-factor-model"
+
+
+def test_build_contract_sections_falls_back_to_live_factor_generation_for_an_uncommitted_ticker(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setattr(run, "generate_factor_contract", _fake_generate_factor_contract)
+    sections = run.build_contract_sections(
+        "TATAELXSI", FIXTURES, provider_name="fixtures", output_dir=tmp_path, factor_model_root=tmp_path
+    )
+    factor_section = next(s for s in sections if s["namespace"] == "factor")
+    assert factor_section["available"] is True
+    assert factor_section["source"] == "fama-french-factor-model (live)"
+    assert factor_section["data"] == LIVE_FACTOR_CONTRACT["factor"]
+
+
+def test_build_contract_sections_keeps_not_available_when_live_factor_generation_also_fails(monkeypatch):
+    monkeypatch.setattr(run, "generate_factor_contract", lambda *a, **k: "sibling missing")
+    sections = run.build_contract_sections("TATAELXSI", FIXTURES)
+    factor_section = next(s for s in sections if s["namespace"] == "factor")
+    assert factor_section["available"] is False
+    assert "not found" in factor_section["reason"]
+
+
+def test_cli_end_to_end_generates_a_live_factor_section_for_an_uncommitted_ticker(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_factor_contract", _fake_generate_factor_contract)
+    rc = run.main(
+        [
+            "--ticker",
+            "TATAELXSI",
+            "--peers",
+            "",
+            "--offline",
+            "--date",
+            "2026-10-17",
+            "--output-dir",
+            str(tmp_path),
+            "--no-charts",
+            "--factor-model-root",
+            str(tmp_path),
+        ]
+    )
+    assert rc == 0
+    text = (tmp_path / "tearsheet_TATAELXSI_2026-10-17.md").read_text()
+    assert "### Factor" in text
+    assert "fama-french-factor-model (live)" in text
+    assert "alpha_annual" in text
+    assert (tmp_path / "contracts" / "TATAELXSI" / "factor.json").exists()
