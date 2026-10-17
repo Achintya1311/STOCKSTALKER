@@ -184,28 +184,54 @@ def test_build_contract_section_reads_real_fixture_for_subject():
 
 
 def test_build_contract_section_reports_missing_fixture_with_reason():
-    # A peer, not the subject, so no UNVERIFIED_CONTRACT_REASONS override
-    # applies -- this is the generic "not built yet" path.
+    # CROMPTON is a real NSE F&O underlying (confirmed against the
+    # committed fo_mktlots.csv) with no implied-vol-surface fixture
+    # committed yet -- the generic "not built yet" path, not D2's
+    # F&O-underlying check.
     section = run.build_contract_section(
-        "vol", run.gate_vol, "implied-vol-surface", "CASTROLIND", FIXTURES
+        "vol", run.gate_vol, "implied-vol-surface", "CROMPTON", FIXTURES
     )
     assert section["available"] is False
-    assert "CASTROLIND" in section["reason"]
+    assert "CROMPTON" in section["reason"]
     assert "not found" in section["reason"]
 
 
-def test_build_contract_section_vol_for_subject_is_unverified_not_absent():
-    # Day 6: GULFOILLUB's NSE F&O underlying status could not be checked
-    # from this sandbox (the live NSE option-chain endpoint returned the
-    # same empty/blocked payload for GULFOILLUB and for RELIANCE, a known
-    # F&O name) -- the reason must say "unverified", never claim "no
-    # options", which is a different and unsupported finding.
+def test_build_contract_section_vol_for_subject_is_no_listed_options_not_unverified():
+    # Day 5 (D2): fo_mktlots.csv, NSE's own lot-size snapshot, settles
+    # GULFOILLUB's F&O-underlying status without touching the blocked
+    # option-chain endpoint at all -- GULFOILLUB's SYMBOL is absent from
+    # the committed snapshot, so this is a definite "no listed options",
+    # not the old "unverified" hedge.
     section = run.build_contract_section(
         "vol", run.gate_vol, "implied-vol-surface", "GULFOILLUB", FIXTURES
     )
     assert section["available"] is False
-    assert "unverified" in section["reason"]
-    assert "no options" not in section["reason"]
+    assert "no listed options" in section["reason"]
+    assert "not an NSE F&O underlying" in section["reason"]
+    assert "unverified" not in section["reason"]
+
+
+def test_build_contract_section_vol_no_listed_options_applies_to_any_non_fo_ticker():
+    # Not just GULFOILLUB -- CASTROLIND (a lubricant peer, also absent
+    # from fo_mktlots.csv) gets the same honest message, not a generic
+    # "fixture not found" that implies one might simply be missing.
+    section = run.build_contract_section(
+        "vol", run.gate_vol, "implied-vol-surface", "CASTROLIND", FIXTURES
+    )
+    assert section["available"] is False
+    assert "no listed options" in section["reason"]
+
+
+def test_load_fo_underlyings_contains_known_fo_names_not_the_lubricant_peers():
+    underlyings = run.load_fo_underlyings()
+    assert "RELIANCE" in underlyings
+    assert "CROMPTON" in underlyings
+    assert "GULFOILLUB" not in underlyings
+    assert "CASTROLIND" not in underlyings
+
+
+def test_fo_mktlots_list_date_reads_the_committed_metadata():
+    assert run.fo_mktlots_list_date() == "2026-09-29"
 
 
 def test_build_contract_section_reads_real_fixture_for_subject_sentiment():
@@ -270,15 +296,15 @@ def test_build_contract_sections_covers_every_namespace_for_subject():
     available = {s["namespace"] for s in sections if s["available"]}
     # valuation and fundamentals shipped Day 2; risk shipped Day 3; factor
     # shipped Day 5; sentiment shipped Day 6 (a real zero-headline result,
-    # not a stand-in). vol stays unavailable -- Day 6 investigated it and
-    # found the F&O-underlying check itself unverifiable from this sandbox,
-    # not just unbuilt.
+    # not a stand-in). vol stays unavailable -- fo_mktlots.csv (fix-phase
+    # Day 5) confirms GULFOILLUB genuinely has no listed options, not just
+    # an unbuilt fixture.
     assert available == {"valuation", "fundamentals", "risk", "factor", "sentiment"}
     for section in sections:
         if not section["available"]:
             assert section["reason"]
             if section["namespace"] == "vol":
-                assert "unverified" in section["reason"]
+                assert "no listed options" in section["reason"]
 
 
 def test_render_contract_section_available_shows_fields():
@@ -301,7 +327,7 @@ def test_render_contract_section_unavailable_is_a_one_line_reason():
 
 def test_contract_sections_markdown_never_shows_sizing(cfg):
     sections = run.build_contract_sections("GULFOILLUB", FIXTURES)
-    lines = run.contract_sections_markdown(sections)
+    lines = run.contract_sections_markdown(sections, "GULFOILLUB")
     text = "\n".join(lines)
     assert "### Valuation" in text
     assert "### Fundamentals" in text
@@ -309,6 +335,37 @@ def test_contract_sections_markdown_never_shows_sizing(cfg):
     assert "Not available" in text
     assert "left out on purpose" in text
     assert "### Sizing" not in text
+
+
+def test_contract_sections_markdown_notes_the_kupiec_gap_for_gulfoillub_risk(cfg):
+    # R5: the risk contract only ships the 95% VaR/CVaR; the tear sheet
+    # states the known 99%/Kupiec gap right under that section rather
+    # than letting the number sit unremarked.
+    sections = run.build_contract_sections("GULFOILLUB", FIXTURES)
+    lines = run.contract_sections_markdown(sections, "GULFOILLUB")
+    text = "\n".join(lines)
+    assert "Kupiec" in text
+    assert "REJECTED at both 95%" in text
+
+
+def test_contract_sections_markdown_labels_reliance_factor_as_old_method(cfg):
+    # R6: RELIANCE's factor contract is still the old Ken French USD
+    # regression; the tear sheet says so wherever that contract shows up,
+    # not just in fama-french-factor-model's own README.
+    sections = run.build_contract_sections("RELIANCE", FIXTURES)
+    lines = run.contract_sections_markdown(sections, "RELIANCE")
+    text = "\n".join(lines)
+    assert "old method" in text
+    assert "Ken French" in text
+
+
+def test_contract_sections_markdown_renders_significance_as_words(cfg):
+    sections = run.build_contract_sections("GULFOILLUB", FIXTURES)
+    lines = run.contract_sections_markdown(sections, "GULFOILLUB")
+    text = "\n".join(lines)
+    assert "not significant" in text
+    assert "| significant | True |" not in text
+    assert "| significant | False |" not in text
 
 
 def test_cli_end_to_end_includes_contract_sections(tmp_path):
@@ -330,6 +387,28 @@ def test_cli_end_to_end_includes_contract_sections(tmp_path):
     assert "balance_check" in text
     assert "Not available" in text
     assert "sizing" in text.lower()
+
+
+def test_cli_end_to_end_prints_sizing_exclusion_and_risk_caveat_to_console(tmp_path, capsys):
+    # R7: the sizing-exclusion reason used to live only in the tear sheet;
+    # R5: the Kupiec gap note for the default subject (GULFOILLUB) should
+    # reach the terminal too, not just the markdown file.
+    rc = run.main(
+        [
+            "--ticker",
+            "GULFOILLUB",
+            "--offline",
+            "--date",
+            "2026-10-12",
+            "--output-dir",
+            str(tmp_path),
+            "--no-charts",
+        ]
+    )
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "left out on purpose" in out
+    assert "Kupiec" in out
 
 
 # -- Day 7: rebased/drawdown/volatility charts -------------------------------

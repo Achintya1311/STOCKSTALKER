@@ -1,0 +1,6 @@
+{
+  "source": "https://nsearchives.nseindia.com/content/fo/fo_mktlots.csv",
+  "fetched_at": "2026-10-17",
+  "list_last_modified": "2026-09-29",
+  "note": "NSE's own current F&O lot-size snapshot (every index and stock underlying with listed derivatives). SYMBOL column checked for front-door honesty (CRITIQUES.md D2): a ticker absent here has no listed options, full stop -- not merely an unchecked or blocked case."
+}

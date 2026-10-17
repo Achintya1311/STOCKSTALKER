@@ -37,6 +37,7 @@ a number anyone should act on. See NEXT_STEPS.md Day 2.
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 from datetime import date
 from pathlib import Path
@@ -202,24 +203,63 @@ def _fmt_scalar(value: Any) -> str:
     return str(value)
 
 
-# Day 6: namespaces where a missing fixture is not "not built yet" but an
-# investigated, inconclusive result -- the reason has to say that, not the
-# generic "fixture not found" line, or the tear sheet reads as an
-# unattempted day. GULFOILLUB's NSE F&O underlying status could not be
-# determined from this sandbox: implied-vol-surface's live NSE
-# option-chain endpoint returned the identical empty/blocked payload for
-# GULFOILLUB and for RELIANCE, a name known to have listed options, so an
-# empty response here is not evidence of "no chain" -- see that repo's
-# README Findings, 2026-10-12. This is "unverified", never "no options".
-UNVERIFIED_CONTRACT_REASONS: dict[tuple[str, str], str] = {
-    ("vol", "GULFOILLUB"): (
-        "unverified -- GULFOILLUB's NSE F&O underlying status could not be checked "
-        "from this sandbox. implied-vol-surface's live NSE option-chain endpoint "
-        "returned the same empty/blocked payload for GULFOILLUB as it did for "
-        "RELIANCE (a name with real listed options), so the blocked response "
-        "cannot be read as 'no option chain' -- see that repo's README Findings"
-    ),
-}
+# Day 5 (D2): NSE's own F&O lot-size snapshot -- whether a missing vol
+# fixture means "not an F&O underlying at all" (a real, checkable fact) or
+# just "not built yet" used to be undecidable from this sandbox, because
+# the live NSE option-chain endpoint returned the same empty/blocked
+# payload for GULFOILLUB as it did for RELIANCE, a name known to have
+# listed options (see implied-vol-surface's README Findings, 2026-10-12).
+# fo_mktlots.csv settles it without touching that endpoint at all.
+FO_MKTLOTS_PATH = ROOT / "fixtures" / "fo_mktlots.csv"
+FO_MKTLOTS_META_PATH = ROOT / "fixtures" / "fo_mktlots_meta.json"
+
+
+def load_fo_underlyings(path: Path = FO_MKTLOTS_PATH) -> set[str]:
+    """NSE F&O underlying symbols (stock and index) from the lot-size snapshot.
+
+    ``fo_mktlots.csv`` is NSE's own export: one header row, then the index
+    derivatives (NIFTY, BANKNIFTY, ...) before the per-stock rows -- both
+    kinds belong in the result, since the only question this answers is
+    "is this symbol an F&O underlying at all". Every field is fixed-width
+    space-padded, so each value is stripped after the plain comma split.
+    """
+    symbols: set[str] = set()
+    with Path(path).open(newline="") as fh:
+        reader = csv.reader(fh)
+        next(reader, None)  # header row
+        for row in reader:
+            if len(row) < 2:
+                continue
+            symbol = row[1].strip()
+            if symbol:
+                symbols.add(symbol.upper())
+    return symbols
+
+
+def fo_mktlots_list_date(meta_path: Path = FO_MKTLOTS_META_PATH) -> str:
+    """The snapshot's own effective date (NSE's Last-Modified at capture time)."""
+    try:
+        meta = json.loads(Path(meta_path).read_text())
+        return meta["list_last_modified"]
+    except (OSError, KeyError, json.JSONDecodeError):
+        return "unknown"
+
+
+def _vol_unavailable_reason(ticker: str, source_repo: str, path: Path) -> str:
+    """A missing vol fixture is "no listed options" only once fo_mktlots.csv
+    actually says the ticker is not an F&O underlying; otherwise it is the
+    same generic "not built yet" reason every other namespace uses.
+    """
+    try:
+        underlyings = load_fo_underlyings()
+    except OSError:
+        underlyings = None
+    if underlyings is not None and ticker.upper() not in underlyings:
+        return (
+            f"no listed options: not an NSE F&O underlying "
+            f"(fo_mktlots.csv, list dated {fo_mktlots_list_date()})"
+        )
+    return f"no {source_repo} contract fixture for {ticker.upper()} ({path.relative_to(ROOT)} not found)"
 
 
 def build_contract_section(
@@ -232,14 +272,15 @@ def build_contract_section(
     ``data/universe.txt`` (see the module docstring's Traps note). Returns
     an "available" section with the contract's own fields, or an
     "unavailable" section with a one-line reason: no fixture committed for
-    this ticker yet, the fixture failed its gate's own validation, or (see
-    ``UNVERIFIED_CONTRACT_REASONS``) the absence itself was investigated and
-    found inconclusive rather than simply not attempted.
+    this ticker yet, the fixture failed its gate's own validation, or (vol
+    only, see ``_vol_unavailable_reason``) the ticker has no listed options
+    at all per NSE's own lot-size list.
     """
     path = fixtures_dir / namespace / f"{ticker.upper()}.json"
     if not path.exists():
-        reason = UNVERIFIED_CONTRACT_REASONS.get((namespace, ticker.upper()))
-        if reason is None:
+        if namespace == "vol":
+            reason = _vol_unavailable_reason(ticker, source_repo, path)
+        else:
             reason = f"no {source_repo} contract fixture for {ticker.upper()} ({path.relative_to(ROOT)} not found)"
         return {
             "namespace": namespace,
@@ -261,6 +302,24 @@ def build_contract_sections(ticker: str, fixtures_dir: Path | None = None) -> li
     ]
 
 
+# R7: the one line explaining why `sizing` never appears in CONTRACT_NAMESPACES
+# at all -- shared verbatim between the console and the tear sheet so the two
+# can't drift apart.
+SIZING_EXCLUSION_NOTE = (
+    "is left out on purpose: a sector-capped weight across the subject and "
+    "its three lubricant peers is a sector bet, not a position size (NEXT_STEPS.md Day 2)."
+)
+
+
+def contract_section_note(namespace: str, ticker: str) -> str | None:
+    """A one-line caveat for this (namespace, ticker), beyond the contract's own fields (R5, R6)."""
+    if namespace == "risk":
+        return gate_risk.kupiec_note(ticker)
+    if namespace == "factor":
+        return gate_factor.method_label(ticker)
+    return None
+
+
 def render_contract_section(section: dict[str, Any]) -> Table | str:
     if not section["available"]:
         return f"[yellow]·[/yellow] {section['namespace']}: not available -- {section['reason']}"
@@ -268,11 +327,13 @@ def render_contract_section(section: dict[str, Any]) -> Table | str:
     table.add_column("Field")
     table.add_column("Value", justify="right")
     for key, value in section["data"].items():
+        if section["namespace"] == "factor" and key == "significant":
+            value = gate_factor.significance_label(value)
         table.add_row(key, _fmt_scalar(value))
     return table
 
 
-def contract_sections_markdown(sections: list[dict[str, Any]]) -> list[str]:
+def contract_sections_markdown(sections: list[dict[str, Any]], ticker: str) -> list[str]:
     lines = ["## Contract sections", ""]
     for section in sections:
         lines.append(f"### {section['namespace'].capitalize()}")
@@ -285,12 +346,15 @@ def contract_sections_markdown(sections: list[dict[str, Any]]) -> list[str]:
             lines.append("| Field | Value |")
             lines.append("|-------|-------|")
             for key, value in section["data"].items():
+                if section["namespace"] == "factor" and key == "significant":
+                    value = gate_factor.significance_label(value)
                 lines.append(f"| {key} | {_fmt_scalar(value)} |")
+        note = contract_section_note(section["namespace"], ticker)
+        if note:
+            lines.append("")
+            lines.append(f"> {note}")
         lines.append("")
-    lines.append(
-        "`sizing` is left out on purpose: a sector-capped weight across the subject and "
-        "its three lubricant peers is a sector bet, not a position size (NEXT_STEPS.md Day 2)."
-    )
+    lines.append(f"`sizing` {SIZING_EXCLUSION_NOTE}")
     lines.append("")
     return lines
 
@@ -359,7 +423,7 @@ def write_tearsheet(
             f"| {r['ticker']} | {_fmt_pct(r['return_1y'])} | {_fmt_pct(r['volatility_1y'])} "
             f"| {r['adv_20d']:,.0f} |"
         )
-    lines += ["", *contract_sections_markdown(contract_sections or [])]
+    lines += ["", *contract_sections_markdown(contract_sections or [], subject["ticker"])]
     if chart_paths:
         lines += ["## Charts", ""]
         for chart_path in chart_paths:
@@ -416,6 +480,10 @@ def main(argv: list[str] | None = None) -> int:
     console.print(render_peer_table(peer_rows))
     for section in contract_sections:
         console.print(render_contract_section(section))
+        note = contract_section_note(section["namespace"], args.ticker)
+        if note:
+            console.print(f"  [dim]{note}[/dim]")
+    console.print(f"[dim]· sizing {SIZING_EXCLUSION_NOTE}[/dim]")
 
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)

@@ -45,6 +45,36 @@ def _normalize_ticker(ticker: str) -> str:
     return ticker.upper().removesuffix(".NS")
 
 
+# R5: the v0.3 contract shape (``REQUIRED_RISK_KEYS`` above) only ever
+# carries the 95% historical VaR/CVaR. monte-carlo-risk-lab's own Kupiec
+# proportion-of-failures backtest of the *parametric* 1-day VaR, run and
+# reported in that repo's README, never travels into this file -- a reader
+# of the gated screen or front door has no way to know it failed without
+# going back to that README. Carrying the figures into the contract itself
+# is Day 6 (CRITIQUES.md R5, new keys, regenerated fixtures); until then
+# this states what the contract leaves out, sourced to that README rather
+# than recomputed here.
+KUPIEC_NOTES: dict[str, str] = {
+    "RELIANCE": (
+        "Kupiec backtest (monte-carlo-risk-lab README): parametric 1-day VaR "
+        "not rejected at 95% (20/500 exceptions vs 25.0 expected, LR=1.127, "
+        "p=0.29) but REJECTED at 99% (10/500 vs 5.0 expected, LR=3.914, "
+        "p=0.048). This contract ships only the 95% VaR/CVaR."
+    ),
+    "GULFOILLUB": (
+        "Kupiec backtest (monte-carlo-risk-lab README): parametric 1-day VaR "
+        "REJECTED at both 95% (114/3,006 vs 150.3 expected, LR=10.032, "
+        "p=0.0015) and 99% (44/3,006 vs 30.1 expected, LR=5.713, p=0.0168). "
+        "This contract ships only the 95% VaR/CVaR."
+    ),
+}
+
+
+def kupiec_note(ticker: str) -> str | None:
+    """A one-line caveat on the 99%/Kupiec gap this contract's shape leaves out, else None."""
+    return KUPIEC_NOTES.get(_normalize_ticker(ticker))
+
+
 def apply_risk_gate(screen: dict[str, Any], ticker: str, risk: dict[str, float]) -> tuple[dict[str, Any], bool]:
     """Return a copy of ``screen`` with ``risk`` attached to the candidate matching ``ticker``.
 

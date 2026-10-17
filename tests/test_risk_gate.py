@@ -144,3 +144,25 @@ def test_main_defaults_out_to_overwriting_the_screen_in_place(screen, tmp_path):
     gated = json.loads(screen_path.read_text())
     by_ticker = {c["ticker"]: c for c in gated["candidates"]}
     assert by_ticker["TATACHEM.NS"]["risk"] == SYNTHETIC_RISK
+
+
+# -- Day 5 (R5): the Kupiec/99% gap caveat -----------------------------------
+
+
+def test_kupiec_note_cites_the_real_rejection_for_reliance_and_gulfoillub():
+    reliance_note = risk.kupiec_note("RELIANCE")
+    assert reliance_note is not None
+    assert "REJECTED at 99%" in reliance_note
+    assert "not rejected at 95%" in reliance_note
+
+    gulf_note = risk.kupiec_note("GULFOILLUB")
+    assert gulf_note is not None
+    assert "REJECTED at both 95%" in gulf_note
+
+
+def test_kupiec_note_matches_without_the_ns_suffix():
+    assert risk.kupiec_note("reliance.ns") == risk.kupiec_note("RELIANCE")
+
+
+def test_kupiec_note_is_none_for_an_unlisted_ticker():
+    assert risk.kupiec_note("TATACHEM") is None

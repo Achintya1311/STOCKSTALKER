@@ -269,6 +269,46 @@ def test_main_applies_the_real_reliance_risk_contract_and_reports_a_match(tmp_pa
     # survive either way, same approach the valuation gate's test above uses.
     assert "VaR" in out
     assert "-9.15%" in out
+    # R5: this contract ships only the 95% VaR/CVaR; the Kupiec gap at
+    # 99% (and, for RELIANCE, not at 95%) is stated on the console too.
+    assert "Kupiec" in out
+    assert "REJECTED at 99%" in out
+
+
+def test_main_requires_both_factor_flags_together(tmp_path):
+    with pytest.raises(SystemExit):
+        report.main(["--output-dir", str(tmp_path), "--factor-ticker", "RELIANCE.NS"])
+
+
+def test_main_applies_the_real_reliance_factor_contract_and_reports_a_match(tmp_path, capsys):
+    """End to end against fama-french-factor-model's actual fixture output: like the v0.3
+    risk gate's RELIANCE (and unlike the v0.7 valuation gate's GULFOILLUB, outside this
+    repo's universe), RELIANCE.NS is one of this repo's own three universe tickers, so
+    this is a genuine match."""
+    contract = ROOT_FIXTURES / "factor" / "RELIANCE.json"
+    exit_code = report.main(
+        [
+            "--output-dir", str(tmp_path),
+            "--date", "2026-09-07",
+            "--no-charts",
+            "--factor-contract", str(contract),
+            "--factor-ticker", "RELIANCE",
+        ]
+    )
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "attached fama-french-factor-model's contract for RELIANCE" in out
+    assert "Alpha" in out
+    # R6: the boolean "significant" field reads as words, not True/False
+    # (a narrow captured terminal can still wrap or truncate "not
+    # significant" across table cells, same as the VaR/ATM column
+    # fragments above dodge -- "True"/"False" never appearing is the
+    # behavior that actually matters), and RELIANCE's contract is flagged
+    # as the old Ken French method wherever it is shown, including here.
+    assert "True" not in out
+    assert "False" not in out
+    assert "old method" in out
+    assert "Ken French" in out
 
 
 def test_main_requires_both_sizing_flags_together(tmp_path):

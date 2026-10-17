@@ -145,3 +145,26 @@ def test_main_defaults_out_to_overwriting_the_screen_in_place(screen, tmp_path):
     gated = json.loads(screen_path.read_text())
     by_ticker = {c["ticker"]: c for c in gated["candidates"]}
     assert by_ticker["TATACHEM.NS"]["factor"] == SYNTHETIC_FACTOR
+
+
+# -- Day 5 (R6): significance wording and the old-method label -------------
+
+
+def test_significance_label_renders_words_not_booleans():
+    assert factor.significance_label(True) == "significant"
+    assert factor.significance_label(False) == "not significant"
+
+
+def test_method_label_flags_reliance_as_old_method():
+    note = factor.method_label("RELIANCE")
+    assert note is not None
+    assert "Ken French" in note
+    assert "old method" in note
+
+
+def test_method_label_matches_without_the_ns_suffix():
+    assert factor.method_label("reliance.ns") == factor.method_label("RELIANCE")
+
+
+def test_method_label_is_none_for_the_new_iima_method():
+    assert factor.method_label("GULFOILLUB") is None

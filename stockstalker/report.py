@@ -24,9 +24,14 @@ from rich.table import Table
 
 from .backtest import DEFAULT_THRESHOLD, run_backtest
 from .data.providers import ProviderError, load
-from .gates.factor import apply_factor_gate, load_contract as load_factor_contract
+from .gates.factor import (
+    apply_factor_gate,
+    load_contract as load_factor_contract,
+    method_label as factor_method_label,
+    significance_label,
+)
 from .gates.fundamentals import apply_fundamentals_gate, load_contract as load_fundamentals_contract
-from .gates.risk import apply_risk_gate, load_contract as load_risk_contract
+from .gates.risk import apply_risk_gate, kupiec_note, load_contract as load_risk_contract
 from .gates.sentiment import apply_sentiment_gate, load_contract as load_sentiment_contract
 from .gates.sizing import apply_sizing_gate, load_contract as load_sizing_contract
 from .gates.valuation import apply_valuation_gate, load_contract as load_valuation_contract
@@ -113,7 +118,7 @@ def render_screen_table(screen: dict[str, Any]) -> Table:
             f = c.get("factor")
             row.append(f"{f['alpha_annual']:+.2%}" if f else "-")
             row.append(f"{f['loadings'].get('mkt'):+.2f}" if f else "-")
-            row.append(str(f["significant"]) if f else "-")
+            row.append(significance_label(f["significant"]) if f else "-")
         if has_sizing:
             sz = c.get("sizing")
             row.append(f"{sz['weight']:.2%}" if sz else "-")
@@ -391,6 +396,15 @@ def main(argv: list[str] | None = None) -> int:
             )
 
     console.print(render_screen_table(screen))
+    for c in screen["candidates"]:
+        if "risk" in c:
+            note = kupiec_note(c["ticker"])
+            if note:
+                console.print(f"[dim]· {c['ticker']} risk: {note}[/dim]")
+        if "factor" in c:
+            note = factor_method_label(c["ticker"])
+            if note:
+                console.print(f"[dim]· {c['ticker']} factor: {note}[/dim]")
     if backtest_report["results"]:
         console.print(render_backtest_table(backtest_report))
 

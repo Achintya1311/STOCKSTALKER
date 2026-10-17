@@ -47,6 +47,31 @@ def _normalize_ticker(ticker: str) -> str:
     return ticker.upper().removesuffix(".NS")
 
 
+def significance_label(significant: bool) -> str:
+    """Render the contract's own ``significant`` bool as words, not True/False (R6)."""
+    return "significant" if significant else "not significant"
+
+
+# R6: RELIANCE's contract is still fama-french-factor-model's original
+# regression -- USD Ken French factors against INR prices, 22 overlapping
+# months, underpowered for up to 7 parameters (that repo's README, Day 5
+# screen-check). GULFOILLUB's contract (front-door Day 5) replaced that
+# with IIMA's Indian factors on 137 real months instead; every ticker not
+# listed here used that newer method.
+OLD_METHOD_FACTOR_TICKERS: dict[str, str] = {
+    "RELIANCE": (
+        "old method -- Ken French USD factors, 22 overlapping months, "
+        "underpowered (fama-french-factor-model README, Day 5 screen check); "
+        "GULFOILLUB's own contract uses IIMA's Indian factors on 137 months instead"
+    ),
+}
+
+
+def method_label(ticker: str) -> str | None:
+    """A one-line method caveat for tickers still on the old Ken French regression, else None."""
+    return OLD_METHOD_FACTOR_TICKERS.get(_normalize_ticker(ticker))
+
+
 def apply_factor_gate(screen: dict[str, Any], ticker: str, factor: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     """Return a copy of ``screen`` with ``factor`` attached to the candidate matching ``ticker``.
 
