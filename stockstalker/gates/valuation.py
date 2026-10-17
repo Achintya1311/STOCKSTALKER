@@ -42,6 +42,23 @@ def load_contract(path: str | Path) -> dict[str, float]:
     return valuation
 
 
+def financials_source_note(data: dict[str, Any] | None) -> str | None:
+    """Day 23 (C1): flag a "lite" live valuation's own financials source.
+
+    ``data["financials_source"]`` is an additive key reverse-dcf-engine
+    only started writing on Day 23 -- absent on the hand-verified
+    GULFOILLUB/RELIANCE fixtures committed before then, which this
+    function leaves with no note at all (they need none; the ten-year
+    hand-entered base case is already the one the README/site describe).
+    """
+    if not data:
+        return None
+    source = data.get("financials_source")
+    if not source:
+        return None
+    return f"financials source: {source}"
+
+
 def _normalize_ticker(ticker: str) -> str:
     """NSE names show up with (this repo) and without (reverse-dcf-engine) the yfinance '.NS' suffix."""
     return ticker.upper().removesuffix(".NS")

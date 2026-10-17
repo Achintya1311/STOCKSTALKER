@@ -211,3 +211,120 @@ def test_generate_factor_contract_reports_a_timeout(monkeypatch, tmp_path):
     error = live_contracts.generate_factor_contract("TATAELXSI", tmp_path / "prices.csv", tmp_path / "factor.json", root)
     assert error is not None
     assert "failed to run" in error
+
+
+# -- Day 23 (C1): same wiring, reverse-dcf-engine's reverse_dcf.solve -------
+
+
+def test_resolve_reverse_dcf_root_prefers_explicit_override(tmp_path):
+    assert live_contracts.resolve_reverse_dcf_root(tmp_path) == tmp_path
+
+
+def test_resolve_reverse_dcf_root_reads_env_var(monkeypatch, tmp_path):
+    monkeypatch.setenv(live_contracts.REVERSE_DCF_ENV_VAR, str(tmp_path))
+    assert live_contracts.resolve_reverse_dcf_root() == tmp_path
+
+
+def test_resolve_reverse_dcf_root_defaults_to_the_sibling_checkout(monkeypatch):
+    monkeypatch.delenv(live_contracts.REVERSE_DCF_ENV_VAR, raising=False)
+    assert live_contracts.resolve_reverse_dcf_root() == live_contracts.ROOT.parent / "reverse-dcf-engine"
+
+
+def test_generate_valuation_contract_reports_a_missing_sibling_checkout(tmp_path):
+    missing = tmp_path / "does-not-exist"
+    error = live_contracts.generate_valuation_contract(
+        "TATAELXSI", tmp_path / "prices.csv", tmp_path / "valuation.json", missing
+    )
+    assert error is not None
+    assert "not checked out" in error
+
+
+def test_generate_valuation_contract_reports_a_checkout_without_reverse_dcf(tmp_path):
+    fake_root = tmp_path / "fake-reverse-dcf"
+    fake_root.mkdir()
+    error = live_contracts.generate_valuation_contract(
+        "TATAELXSI", tmp_path / "prices.csv", tmp_path / "valuation.json", fake_root
+    )
+    assert error is not None
+    assert "does not look like" in error
+
+
+def _fake_reverse_dcf(tmp_path):
+    root = tmp_path / "fake-reverse-dcf"
+    (root / "reverse_dcf").mkdir(parents=True)
+    (root / "reverse_dcf" / "solve.py").write_text("# stub, never actually run in this test file\n")
+    return root
+
+
+def test_generate_valuation_contract_reports_uv_missing(monkeypatch, tmp_path):
+    root = _fake_reverse_dcf(tmp_path)
+    monkeypatch.setattr(live_contracts.shutil, "which", lambda name: None)
+    error = live_contracts.generate_valuation_contract(
+        "TATAELXSI", tmp_path / "prices.csv", tmp_path / "valuation.json", root
+    )
+    assert error is not None
+    assert "uv is not on PATH" in error
+
+
+def test_generate_valuation_contract_succeeds_when_the_contract_file_lands(monkeypatch, tmp_path):
+    # reverse_dcf.solve's own main() reports price_reachable=False as a
+    # real finding, not an error (CRITIQUES.md V2) -- success must be
+    # judged by the contract file actually landing, not the exit code.
+    root = _fake_reverse_dcf(tmp_path)
+    out_path = tmp_path / "out" / "valuation.json"
+    contract = {
+        "valuation": {
+            "implied_cagr": None,
+            "implied_ebit_margin": 0.22,
+            "implied_reinvestment": None,
+            "breakeven_growth": None,
+            "price_reachable": False,
+            "financials_source": "yfinance, consolidated, 4-5 years",
+        }
+    }
+
+    def fake_run(cmd, cwd, capture_output, text, timeout):
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(contract))
+        return subprocess.CompletedProcess(cmd, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(live_contracts.shutil, "which", lambda name: "/usr/bin/uv")
+    monkeypatch.setattr(live_contracts.subprocess, "run", fake_run)
+    error = live_contracts.generate_valuation_contract("TATAELXSI", tmp_path / "prices.csv", out_path, root)
+    assert error is None
+    assert json.loads(out_path.read_text()) == contract
+
+
+def test_generate_valuation_contract_reports_failure_when_no_file_is_written(monkeypatch, tmp_path):
+    root = _fake_reverse_dcf(tmp_path)
+    out_path = tmp_path / "out" / "valuation.json"
+
+    def fake_run(cmd, cwd, capture_output, text, timeout):
+        return subprocess.CompletedProcess(
+            cmd, returncode=1,
+            stdout="",
+            stderr="! could not fetch live financials for TATAELXSI: no live network reachable\n",
+        )
+
+    monkeypatch.setattr(live_contracts.shutil, "which", lambda name: "/usr/bin/uv")
+    monkeypatch.setattr(live_contracts.subprocess, "run", fake_run)
+    error = live_contracts.generate_valuation_contract("TATAELXSI", tmp_path / "prices.csv", out_path, root)
+    assert error is not None
+    assert "exited 1" in error
+    assert "no live network reachable" in error
+    assert not out_path.exists()
+
+
+def test_generate_valuation_contract_reports_a_timeout(monkeypatch, tmp_path):
+    root = _fake_reverse_dcf(tmp_path)
+
+    def fake_run(cmd, cwd, capture_output, text, timeout):
+        raise subprocess.TimeoutExpired(cmd, timeout)
+
+    monkeypatch.setattr(live_contracts.shutil, "which", lambda name: "/usr/bin/uv")
+    monkeypatch.setattr(live_contracts.subprocess, "run", fake_run)
+    error = live_contracts.generate_valuation_contract(
+        "TATAELXSI", tmp_path / "prices.csv", tmp_path / "valuation.json", root
+    )
+    assert error is not None
+    assert "failed to run" in error

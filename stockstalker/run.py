@@ -43,6 +43,16 @@ data (see ``build_live_factor_section`` and
 ``live_contracts.generate_factor_contract``). Same rule: a committed
 fixture (GULFOILLUB, RELIANCE) always wins.
 
+Day 23 (C1) adds the same exception for ``valuation``: a subprocess running
+reverse-dcf-engine's ``reverse_dcf.solve --live-financials`` CLI (the Day 23
+yfinance-financials adapter, a simplified "reverse DCF lite") against the
+subject's own price data (see ``build_live_valuation_section`` and
+``live_contracts.generate_valuation_contract``). Same rule: a committed
+fixture (GULFOILLUB) always wins. Unlike risk/factor, this live path makes
+its own yfinance call (for financials, not just the price this repo already
+supplies) from inside the subprocess, so no live network is one more
+ordinary reason it can fall back to "not available".
+
 ``sizing`` is deliberately left out: markowitz-portfolio-optimizer's
 sector-capped weight is a position size *within a screened universe of
 candidates*, and a sector-capped weight across the subject plus its three
@@ -72,7 +82,9 @@ from .gates import vol as gate_vol
 from .live_contracts import (
     generate_factor_contract,
     generate_risk_contract,
+    generate_valuation_contract,
     resolve_factor_model_root,
+    resolve_reverse_dcf_root,
     resolve_risk_lab_root,
 )
 from .screener import CONFIG_PATH, blended_score, compute_signals, liquidity_metrics, load_config
@@ -400,6 +412,42 @@ def build_live_factor_section(
     return {"namespace": "factor", "available": True, "source": "fama-french-factor-model (live)", "data": data}
 
 
+def build_live_valuation_section(
+    ticker: str,
+    provider_name: str,
+    output_dir: Path,
+    reverse_dcf_root: Path | str | None = None,
+) -> dict[str, Any] | None:
+    """Day 23 (C1): generate the valuation contract on the fly, via
+    reverse-dcf-engine's ``reverse_dcf.solve --live-financials`` CLI (the
+    Day 23 yfinance-financials adapter) run as a subprocess against the
+    sibling checkout, for a ticker with no committed
+    ``fixtures/valuation/<TICKER>.json``.
+
+    Same shape and the same honest degradation as ``build_live_risk_section``
+    (Day 21) and ``build_live_factor_section`` (Day 22): writes
+    ``<output_dir>/contracts/<TICKER>/valuation.json``, a build artifact
+    never committed, and returns ``None`` rather than crashing when the
+    price data, the sibling checkout, ``uv``, or the subprocess itself
+    (which includes its own live yfinance call for the financials, not just
+    the price this function already supplies) isn't available.
+    """
+    try:
+        prices_csv = local_csv_path(to_yf_ticker(ticker), provider=provider_name)
+    except ProviderError:
+        return None
+    reverse_dcf_root = Path(reverse_dcf_root) if reverse_dcf_root else resolve_reverse_dcf_root()
+    out_path = output_dir / "contracts" / ticker.upper() / "valuation.json"
+    error = generate_valuation_contract(ticker, prices_csv, out_path, reverse_dcf_root)
+    if error is not None:
+        return None
+    try:
+        data = gate_valuation.load_contract(out_path)
+    except (ValueError, OSError, json.JSONDecodeError):
+        return None
+    return {"namespace": "valuation", "available": True, "source": "reverse-dcf-engine (live)", "data": data}
+
+
 def build_contract_sections(
     ticker: str,
     fixtures_dir: Path | None = None,
@@ -408,6 +456,7 @@ def build_contract_sections(
     output_dir: Path | None = None,
     risk_lab_root: Path | str | None = None,
     factor_model_root: Path | str | None = None,
+    reverse_dcf_root: Path | str | None = None,
 ) -> list[dict[str, Any]]:
     fixtures_dir = fixtures_dir or FIXTURES_DIR
     output_dir = output_dir or OUTPUT_DIR
@@ -420,6 +469,10 @@ def build_contract_sections(
                 section = live_section
         if namespace == "factor" and not section["available"]:
             live_section = build_live_factor_section(ticker, provider_name, output_dir, factor_model_root)
+            if live_section is not None:
+                section = live_section
+        if namespace == "valuation" and not section["available"]:
+            live_section = build_live_valuation_section(ticker, provider_name, output_dir, reverse_dcf_root)
             if live_section is not None:
                 section = live_section
         sections.append(section)
@@ -442,6 +495,8 @@ def contract_section_note(section: dict[str, Any], ticker: str) -> str | None:
         return gate_risk.kupiec_note(ticker, section.get("data"))
     if namespace == "factor":
         return gate_factor.method_label(ticker)
+    if namespace == "valuation":
+        return gate_valuation.financials_source_note(section.get("data"))
     return None
 
 
@@ -599,6 +654,16 @@ def main(argv: list[str] | None = None) -> int:
             "next to this repo)"
         ),
     )
+    parser.add_argument(
+        "--reverse-dcf-root",
+        default=None,
+        help=(
+            "reverse-dcf-engine checkout to shell out to when no "
+            "fixtures/valuation/<TICKER>.json is committed (default: the "
+            "STOCKSTALKER_REVERSE_DCF_ROOT env var, or the sibling checkout "
+            "next to this repo)"
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.live and args.offline:
@@ -627,6 +692,7 @@ def main(argv: list[str] | None = None) -> int:
         output_dir=out_dir,
         risk_lab_root=args.risk_lab_root,
         factor_model_root=args.factor_model_root,
+        reverse_dcf_root=args.reverse_dcf_root,
     )
 
     console.print(render_subject_table(subject))

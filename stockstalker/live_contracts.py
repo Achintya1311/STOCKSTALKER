@@ -15,7 +15,15 @@ Day 21 added the risk path (``generate_risk_contract``, against
 monte-carlo-risk-lab's ``mcsim.portfolio``). Day 22 adds the factor path
 (``generate_factor_contract``, against fama-french-factor-model's
 ``factors.stock`` -- the Day 22 ticker-agnostic generalisation of
-``factors.gulfoillub``) on the same pattern.
+``factors.gulfoillub``) on the same pattern. Day 23 adds the valuation path
+(``generate_valuation_contract``, against reverse-dcf-engine's
+``reverse_dcf.solve --live-financials`` -- the Day 23 yfinance-financials
+adapter, a simplified "reverse DCF lite"). Unlike risk/factor, the
+valuation subprocess itself calls out to yfinance (for the financials, not
+just the price this repo already supplies as ``prices_csv``), so a missing
+sibling, missing ``uv``, *or* no live network reachable from inside that
+subprocess are all ordinary, expected failure modes here -- not just the
+first two.
 
 Each subprocess is launched with ``uv run --with-editable .`` from inside
 the sibling checkout, not ``sys.executable``: ``mcsim`` depends on
@@ -44,6 +52,8 @@ RISK_LAB_ENV_VAR = "STOCKSTALKER_RISK_LAB_ROOT"
 DEFAULT_RISK_LAB_ROOT = ROOT.parent / "monte-carlo-risk-lab"
 FACTOR_MODEL_ENV_VAR = "STOCKSTALKER_FACTOR_MODEL_ROOT"
 DEFAULT_FACTOR_MODEL_ROOT = ROOT.parent / "fama-french-factor-model"
+REVERSE_DCF_ENV_VAR = "STOCKSTALKER_REVERSE_DCF_ROOT"
+DEFAULT_REVERSE_DCF_ROOT = ROOT.parent / "reverse-dcf-engine"
 SUBPROCESS_TIMEOUT_SECONDS = 180
 
 
@@ -173,6 +183,75 @@ def generate_factor_contract(ticker: str, prices_csv: Path, out_path: Path, fact
         stderr_tail = stderr_lines[-1] if stderr_lines else ""
         detail = f": {stderr_tail}" if stderr_tail else ""
         return f"fama-french-factor-model subprocess exited {result.returncode} without writing a contract{detail}"
+    return None
+
+
+def resolve_reverse_dcf_root(override: str | Path | None = None) -> Path:
+    """The reverse-dcf-engine checkout to shell out to.
+
+    Explicit ``override`` wins, then ``$STOCKSTALKER_REVERSE_DCF_ROOT``,
+    then the sibling directory this hub's own checkouts use
+    (``REPOS_ROOT/reverse-dcf-engine``, next to this repo's own root).
+    """
+    if override:
+        return Path(override)
+    env = os.environ.get(REVERSE_DCF_ENV_VAR)
+    if env:
+        return Path(env)
+    return DEFAULT_REVERSE_DCF_ROOT
+
+
+def generate_valuation_contract(ticker: str, prices_csv: Path, out_path: Path, reverse_dcf_root: Path) -> str | None:
+    """Run reverse-dcf-engine's ``reverse_dcf.solve --live-financials`` against
+    ``prices_csv`` (for the target price) and a live yfinance fetch (for the
+    financials -- see that repo's ``reverse_dcf.live_financials``, Day 23),
+    writing its ``--contract`` output to ``out_path``.
+
+    Returns ``None`` on success (``out_path`` now holds the contract), or a
+    one-line reason on failure. Never raises -- every failure mode (sibling
+    missing, ``uv`` missing, the subprocess itself failing or timing out,
+    *or* no live network reachable for yfinance from inside that subprocess)
+    is a normal, expected outcome for a ticker this path hasn't been proven
+    for yet, not a crash.
+    """
+    if not reverse_dcf_root.is_dir():
+        return f"reverse-dcf-engine is not checked out at {reverse_dcf_root}"
+    if not (reverse_dcf_root / "reverse_dcf" / "solve.py").is_file():
+        return f"{reverse_dcf_root} does not look like the reverse-dcf-engine checkout (no reverse_dcf/solve.py)"
+
+    uv = shutil.which("uv")
+    if uv is None:
+        return (
+            "uv is not on PATH -- reverse_dcf depends on scipy, which is not "
+            "one of this repo's own dependencies, so its CLI can only be run "
+            "through uv's own ephemeral venv (uv run --with-editable .)"
+        )
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        uv, "run", "--with-editable", ".", "python", "-m", "reverse_dcf.solve",
+        "--ticker", ticker.upper(),
+        "--live-financials",
+        "--prices-csv", str(prices_csv.resolve()),
+        "--contract", str(out_path.resolve()),
+    ]
+    try:
+        result = subprocess.run(
+            cmd, cwd=reverse_dcf_root, capture_output=True, text=True,
+            timeout=SUBPROCESS_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"reverse-dcf-engine subprocess failed to run: {exc}"
+
+    # reverse_dcf.solve's own main() reports a "price unreachable" result
+    # (price_reachable=False in the contract) as a real, honest finding, not
+    # an error -- see that repo's solve() docstring. The contract file
+    # actually existing is the real signal of success, not the exit code.
+    if not out_path.exists():
+        stderr_lines = result.stderr.strip().splitlines()
+        stderr_tail = stderr_lines[-1] if stderr_lines else ""
+        detail = f": {stderr_tail}" if stderr_tail else ""
+        return f"reverse-dcf-engine subprocess exited {result.returncode} without writing a contract{detail}"
     return None
 
 

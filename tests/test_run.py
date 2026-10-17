@@ -819,3 +819,123 @@ def test_cli_end_to_end_generates_a_live_factor_section_for_an_uncommitted_ticke
     assert "fama-french-factor-model (live)" in text
     assert "alpha_annual" in text
     assert (tmp_path / "contracts" / "TATAELXSI" / "factor.json").exists()
+
+
+# -- Day 23 (C1): any-stock tear sheet, valuation section (reverse DCF lite) --
+#
+# Same pattern as Day 21/22's risk/factor sections above: reverse-dcf-engine's
+# GULFOILLUB valuation fixture is hand-verified and committed; this day adds
+# a live fallback, generated on the fly as a subprocess into the sibling
+# checkout (via the Day 23 `reverse_dcf.solve --live-financials` CLI), for a
+# ticker with no committed fixture. ``run.generate_valuation_contract`` is
+# monkeypatched throughout; the real, end-to-end path (which makes its own
+# live yfinance call from inside the subprocess, not just a prices CSV) is
+# exercised separately in test_live_valuation_contract_smoke.py.
+
+LIVE_VALUATION_CONTRACT = {
+    "valuation": {
+        "implied_cagr": None,
+        "implied_ebit_margin": 0.2239,
+        "implied_reinvestment": None,
+        "breakeven_growth": None,
+        "price_reachable": False,
+        "financials_source": "yfinance, consolidated, 4-5 years",
+    }
+}
+
+
+def _fake_generate_valuation_contract(ticker, prices_csv, out_path, reverse_dcf_root):
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(LIVE_VALUATION_CONTRACT))
+    return None
+
+
+def test_build_live_valuation_section_returns_none_when_price_data_is_missing(tmp_path):
+    assert run.build_live_valuation_section("NOTATICKER", "fixtures", tmp_path) is None
+
+
+def test_build_live_valuation_section_accepts_a_plain_string_root(tmp_path):
+    missing_root_as_str = str(tmp_path / "no-such-sibling-checkout")
+    section = run.build_live_valuation_section(
+        "TATAELXSI", "fixtures", tmp_path, reverse_dcf_root=missing_root_as_str
+    )
+    assert section is None
+
+
+def test_build_live_valuation_section_returns_none_on_generation_failure(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_valuation_contract", lambda *a, **k: "sibling missing")
+    section = run.build_live_valuation_section("TATAELXSI", "fixtures", tmp_path, reverse_dcf_root=tmp_path)
+    assert section is None
+
+
+def test_build_live_valuation_section_builds_an_available_section(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_valuation_contract", _fake_generate_valuation_contract)
+    section = run.build_live_valuation_section("TATAELXSI", "fixtures", tmp_path, reverse_dcf_root=tmp_path)
+    assert section == {
+        "namespace": "valuation",
+        "available": True,
+        "source": "reverse-dcf-engine (live)",
+        "data": LIVE_VALUATION_CONTRACT["valuation"],
+    }
+    assert (tmp_path / "contracts" / "TATAELXSI" / "valuation.json").exists()
+
+
+def test_build_contract_sections_never_regenerates_a_committed_valuation_fixture(monkeypatch):
+    # The hand-verified GULFOILLUB valuation fixture must never be
+    # regenerated live -- live generation must not even be attempted when
+    # the committed fixture already answers the namespace.
+    def fail(*a, **k):
+        raise AssertionError("must not attempt live generation when a committed fixture exists")
+
+    monkeypatch.setattr(run, "generate_valuation_contract", fail)
+    sections = run.build_contract_sections("GULFOILLUB", FIXTURES)
+    valuation_section = next(s for s in sections if s["namespace"] == "valuation")
+    assert valuation_section["available"] is True
+    assert valuation_section["source"] == "reverse-dcf-engine"
+
+
+def test_build_contract_sections_falls_back_to_live_valuation_generation_for_an_uncommitted_ticker(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setattr(run, "generate_valuation_contract", _fake_generate_valuation_contract)
+    sections = run.build_contract_sections(
+        "TATAELXSI", FIXTURES, provider_name="fixtures", output_dir=tmp_path, reverse_dcf_root=tmp_path
+    )
+    valuation_section = next(s for s in sections if s["namespace"] == "valuation")
+    assert valuation_section["available"] is True
+    assert valuation_section["source"] == "reverse-dcf-engine (live)"
+    assert valuation_section["data"] == LIVE_VALUATION_CONTRACT["valuation"]
+
+
+def test_build_contract_sections_keeps_not_available_when_live_valuation_generation_also_fails(monkeypatch):
+    monkeypatch.setattr(run, "generate_valuation_contract", lambda *a, **k: "sibling missing")
+    sections = run.build_contract_sections("TATAELXSI", FIXTURES)
+    valuation_section = next(s for s in sections if s["namespace"] == "valuation")
+    assert valuation_section["available"] is False
+    assert "not found" in valuation_section["reason"]
+
+
+def test_cli_end_to_end_generates_a_live_valuation_section_for_an_uncommitted_ticker(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_valuation_contract", _fake_generate_valuation_contract)
+    rc = run.main(
+        [
+            "--ticker",
+            "TATAELXSI",
+            "--peers",
+            "",
+            "--offline",
+            "--date",
+            "2026-10-17",
+            "--output-dir",
+            str(tmp_path),
+            "--no-charts",
+            "--reverse-dcf-root",
+            str(tmp_path),
+        ]
+    )
+    assert rc == 0
+    text = (tmp_path / "tearsheet_TATAELXSI_2026-10-17.md").read_text()
+    assert "### Valuation" in text
+    assert "reverse-dcf-engine (live)" in text
+    assert "financials source: yfinance, consolidated, 4-5 years" in text
+    assert (tmp_path / "contracts" / "TATAELXSI" / "valuation.json").exists()
