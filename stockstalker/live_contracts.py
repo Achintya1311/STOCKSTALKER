@@ -25,6 +25,30 @@ sibling, missing ``uv``, *or* no live network reachable from inside that
 subprocess are all ordinary, expected failure modes here -- not just the
 first two.
 
+Day 24 adds two more paths, both deliberately *not* a live network fetch:
+
+- ``generate_vol_contract``, against implied-vol-surface's
+  ``volsurface.history --provider nse_raw`` -- it only ever solves a raw
+  NSE option-chain capture someone has already committed (P12's
+  home-connection job; D8's cloud-IP block makes a live NSE fetch from
+  this subprocess pointless). ``run.build_contract_sections`` only calls
+  this for a ticker that genuinely is an F&O underlying (fo_mktlots.csv) --
+  a non-F&O ticker keeps the existing "no listed options" reason and never
+  reaches this path at all. Unlike the other three satellites, this repo
+  has no ``pyproject.toml``/installable layout yet (a gap, not fixed here,
+  out of Day 24's scope) -- so this is the one path that runs via ``uv run
+  --with-requirements requirements.txt`` instead of ``--with-editable .``;
+  ``python -m volsurface.history`` still resolves the local ``volsurface``
+  package because ``uv`` runs it with that checkout as the working
+  directory, the same working equivalent P18 already documented.
+- ``generate_sentiment_contract``, against headline-sentiment-vs-price's
+  ``sentiment.contract`` CLI (default ``vader`` model) -- it reads that
+  repo's own growing, committed headline corpus (D3/D10's daily GitHub
+  Actions scrape), never a live fetch of its own. A ticker nobody's corpus
+  mentions is a real, honest "coverage: none" result (the same shape
+  GULFOILLUB's own committed fixture already reports), not a failure, so
+  this path needs no "unreachable" framing the way valuation's does.
+
 Each subprocess is launched with ``uv run --with-editable .`` from inside
 the sibling checkout, not ``sys.executable``: ``mcsim`` depends on
 ``scipy`` and ``factors`` depends on ``statsmodels``, neither of which
@@ -252,6 +276,172 @@ def generate_valuation_contract(ticker: str, prices_csv: Path, out_path: Path, r
         stderr_tail = stderr_lines[-1] if stderr_lines else ""
         detail = f": {stderr_tail}" if stderr_tail else ""
         return f"reverse-dcf-engine subprocess exited {result.returncode} without writing a contract{detail}"
+    return None
+
+
+IV_SURFACE_ENV_VAR = "STOCKSTALKER_IV_SURFACE_ROOT"
+DEFAULT_IV_SURFACE_ROOT = ROOT.parent / "implied-vol-surface"
+SENTIMENT_ENV_VAR = "STOCKSTALKER_SENTIMENT_ROOT"
+DEFAULT_SENTIMENT_ROOT = ROOT.parent / "headline-sentiment-vs-price"
+
+
+def resolve_iv_surface_root(override: str | Path | None = None) -> Path:
+    """The implied-vol-surface checkout to shell out to.
+
+    Explicit ``override`` wins, then ``$STOCKSTALKER_IV_SURFACE_ROOT``,
+    then the sibling directory this hub's own checkouts use
+    (``REPOS_ROOT/implied-vol-surface``, next to this repo's own root).
+    """
+    if override:
+        return Path(override)
+    env = os.environ.get(IV_SURFACE_ENV_VAR)
+    if env:
+        return Path(env)
+    return DEFAULT_IV_SURFACE_ROOT
+
+
+def raw_capture_exists(ticker: str, iv_surface_root: Path) -> bool:
+    """Whether implied-vol-surface has at least one committed raw NSE
+    capture file for ``ticker`` (P12's home-connection job writes
+    ``fixtures/chains/raw/<SYMBOL>/<stamp>_<expiry>.json``)."""
+    capture_dir = iv_surface_root / "fixtures" / "chains" / "raw" / ticker.upper()
+    return capture_dir.is_dir() and any(capture_dir.glob("*.json"))
+
+
+def generate_vol_contract(ticker: str, out_path: Path, iv_surface_root: Path) -> str | None:
+    """Run implied-vol-surface's ``volsurface.history --provider nse_raw``
+    against its own committed raw NSE captures for ``ticker``, writing its
+    ``--contract`` output to ``out_path``.
+
+    Returns ``None`` on success (``out_path`` now holds the v0.6 vol
+    contract), or a one-line reason on failure. Never raises. Checking
+    ``raw_capture_exists`` first, before touching ``uv`` or spawning a
+    subprocess, means the common case (no raw capture for this ticker --
+    true for every ticker except NIFTY/RELIANCE today) fails fast with the
+    specific "no captured chain" reason ``run.vol_no_capture_reason``
+    otherwise has to construct itself, and never attempts a live NSE fetch
+    this subprocess has no better chance at than ``stockstalker`` itself
+    does (D8's permanent cloud-IP block).
+    """
+    if not iv_surface_root.is_dir():
+        return f"implied-vol-surface is not checked out at {iv_surface_root}"
+    if not (iv_surface_root / "volsurface" / "history.py").is_file():
+        return f"{iv_surface_root} does not look like the implied-vol-surface checkout (no volsurface/history.py)"
+    if not raw_capture_exists(ticker, iv_surface_root):
+        return (
+            f"no captured chain: no raw NSE option-chain capture for {ticker.upper()} "
+            f"in {iv_surface_root.name}/fixtures/chains/raw (home-connection capture only, P12)"
+        )
+
+    uv = shutil.which("uv")
+    if uv is None:
+        return (
+            "uv is not on PATH -- volsurface depends on scipy, which is not one of "
+            "this repo's own dependencies, so its CLI can only be run through "
+            "uv's own ephemeral venv (uv run --with-requirements requirements.txt)"
+        )
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    # implied-vol-surface has no pyproject.toml/installable layout yet (a
+    # gap, not fixed here -- out of Day 24's scope), so this is the one
+    # satellite that can't use the `uv run --with-editable .` pattern
+    # Day 21/22/23 used; `--with-requirements requirements.txt` builds the
+    # same kind of ephemeral venv from its plain requirements file, and
+    # `python -m volsurface.history` still resolves the local package
+    # because uv runs it with this checkout as the working directory (P18's
+    # documented working equivalent for a repo with no installable layout).
+    # --out is redirected to a path under our own output_dir, never the
+    # sibling's own fixtures/history/ -- this path must never write into a
+    # tracked file inside the sibling checkout.
+    history_out = out_path.parent / f"{ticker.upper()}_vol_history.json"
+    cmd = [
+        uv, "run", "--with-requirements", "requirements.txt", "python", "-m", "volsurface.history",
+        "--underlying", ticker.upper(),
+        "--provider", "nse_raw",
+        "--contract", str(out_path.resolve()),
+        "--out", str(history_out.resolve()),
+    ]
+    try:
+        result = subprocess.run(
+            cmd, cwd=iv_surface_root, capture_output=True, text=True,
+            timeout=SUBPROCESS_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"implied-vol-surface subprocess failed to run: {exc}"
+
+    if not out_path.exists():
+        stderr_lines = result.stderr.strip().splitlines()
+        stderr_tail = stderr_lines[-1] if stderr_lines else ""
+        detail = f": {stderr_tail}" if stderr_tail else ""
+        return f"implied-vol-surface subprocess exited {result.returncode} without writing a contract{detail}"
+    return None
+
+
+def resolve_sentiment_root(override: str | Path | None = None) -> Path:
+    """The headline-sentiment-vs-price checkout to shell out to.
+
+    Explicit ``override`` wins, then ``$STOCKSTALKER_SENTIMENT_ROOT``, then
+    the sibling directory this hub's own checkouts use
+    (``REPOS_ROOT/headline-sentiment-vs-price``, next to this repo's own
+    root).
+    """
+    if override:
+        return Path(override)
+    env = os.environ.get(SENTIMENT_ENV_VAR)
+    if env:
+        return Path(env)
+    return DEFAULT_SENTIMENT_ROOT
+
+
+def generate_sentiment_contract(ticker: str, out_path: Path, sentiment_root: Path) -> str | None:
+    """Run headline-sentiment-vs-price's ``sentiment.contract`` (default
+    ``vader`` model) against its own committed, growing headline corpus for
+    ``ticker``, writing its ``--contract`` output to ``out_path``.
+
+    Returns ``None`` on success (``out_path`` now holds the v0.5 sentiment
+    contract -- a real "coverage: none" zero for a ticker nobody's corpus
+    mentions counts as success, the same honest shape GULFOILLUB's own
+    committed fixture already has), or a one-line reason on failure. Never
+    raises -- a missing sibling or missing ``uv`` are the only realistic
+    failure modes here, since this CLI reads a fixture already committed in
+    the sibling checkout rather than making any network call of its own.
+    """
+    if not sentiment_root.is_dir():
+        return f"headline-sentiment-vs-price is not checked out at {sentiment_root}"
+    if not (sentiment_root / "sentiment" / "contract.py").is_file():
+        return (
+            f"{sentiment_root} does not look like the headline-sentiment-vs-price "
+            "checkout (no sentiment/contract.py)"
+        )
+
+    uv = shutil.which("uv")
+    if uv is None:
+        return (
+            "uv is not on PATH -- sentiment depends on nltk/pandas, which are not "
+            "among this repo's own dependencies, so its CLI can only be run "
+            "through uv's own ephemeral venv (uv run --with-editable .)"
+        )
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    ticker_yf = ticker.upper() if ticker.upper().endswith(".NS") else f"{ticker.upper()}.NS"
+    cmd = [
+        uv, "run", "--with-editable", ".", "python", "-m", "sentiment.contract",
+        "--ticker", ticker_yf,
+        "--out", str(out_path.resolve()),
+    ]
+    try:
+        result = subprocess.run(
+            cmd, cwd=sentiment_root, capture_output=True, text=True,
+            timeout=SUBPROCESS_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"headline-sentiment-vs-price subprocess failed to run: {exc}"
+
+    if not out_path.exists():
+        stderr_lines = result.stderr.strip().splitlines()
+        stderr_tail = stderr_lines[-1] if stderr_lines else ""
+        detail = f": {stderr_tail}" if stderr_tail else ""
+        return f"headline-sentiment-vs-price subprocess exited {result.returncode} without writing a contract{detail}"
     return None
 
 

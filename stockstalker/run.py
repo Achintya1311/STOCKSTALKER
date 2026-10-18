@@ -53,6 +53,37 @@ its own yfinance call (for financials, not just the price this repo already
 supplies) from inside the subprocess, so no live network is one more
 ordinary reason it can fall back to "not available".
 
+Day 24 (C1) adds two more sections on the same live-fallback shape, both
+deliberately read-only against already-committed data rather than a fresh
+network fetch:
+
+- ``vol``: when the subject genuinely is an NSE F&O underlying
+  (``fo_mktlots.csv``) but has no committed ``fixtures/vol/<TICKER>.json``,
+  the front door solves implied-vol-surface's own real raw NSE capture for
+  that ticker (P12's home-connection job), if one has been committed
+  (see ``build_live_vol_section`` and ``live_contracts.generate_vol_contract``).
+  A non-F&O ticker never reaches this path -- it keeps the existing "no
+  listed options" reason (D2). An F&O ticker with no raw capture gets a
+  distinct "no captured chain" reason (``vol_no_capture_reason``), not the
+  generic "fixture not found" every other namespace uses, because the real
+  reason is specific and checkable: nobody has captured that ticker's chain
+  from a home connection yet, not that a fixture merely hasn't been built.
+- ``sentiment``: when the subject has no committed
+  ``fixtures/sentiment/<TICKER>.json``, the front door runs
+  headline-sentiment-vs-price's ``sentiment.contract`` CLI against its own
+  growing, committed headline corpus (see ``build_live_sentiment_section``
+  and ``live_contracts.generate_sentiment_contract``). A ticker the corpus
+  never mentions still comes back "available" with a real, honest
+  "coverage: none" zero -- the same shape GULFOILLUB's own committed
+  fixture already reports -- not "not available".
+
+``fundamentals`` gets no live-generation path at all, on purpose: three-
+statement-model's driver-based statements are built by hand for companies
+Achintya has actually researched (GULFOILLUB), never generalised to an
+arbitrary ticker's public financials the way reverse-dcf-engine's "lite"
+valuation path is (Day 23) -- see ``FUNDAMENTALS_SCOPE_NOTE``, printed
+alongside this section whether or not a fixture exists for the subject.
+
 ``sizing`` is deliberately left out: markowitz-portfolio-optimizer's
 sector-capped weight is a position size *within a screened universe of
 candidates*, and a sector-capped weight across the subject plus its three
@@ -82,10 +113,14 @@ from .gates import vol as gate_vol
 from .live_contracts import (
     generate_factor_contract,
     generate_risk_contract,
+    generate_sentiment_contract,
     generate_valuation_contract,
+    generate_vol_contract,
     resolve_factor_model_root,
+    resolve_iv_surface_root,
     resolve_reverse_dcf_root,
     resolve_risk_lab_root,
+    resolve_sentiment_root,
 )
 from .screener import CONFIG_PATH, blended_score, compute_signals, liquidity_metrics, load_config
 from .viz import charts as viz_charts
@@ -304,6 +339,21 @@ def _vol_unavailable_reason(ticker: str, source_repo: str, path: Path) -> str:
     return f"no {source_repo} contract fixture for {ticker.upper()} ({path.relative_to(ROOT)} not found)"
 
 
+def vol_no_capture_reason(ticker: str, iv_surface_root: Path) -> str:
+    """Day 24 (C1): the reason shown when ``ticker`` genuinely is an NSE
+    F&O underlying (so a real options chain could in principle exist) but
+    implied-vol-surface has no raw NSE capture for it yet (P12: only a home
+    connection can capture one) and no committed
+    ``fixtures/vol/<TICKER>.json`` either -- distinct from
+    ``_vol_unavailable_reason``'s "not an F&O underlying at all" case,
+    which this function is never reached for (see ``build_contract_sections``).
+    """
+    return (
+        f"no captured chain: no raw NSE option-chain capture for {ticker.upper()} in "
+        f"{iv_surface_root.name}/fixtures/chains/raw (home-connection capture only, P12)"
+    )
+
+
 def build_contract_section(
     namespace: str, gate_module: Any, source_repo: str, ticker: str, fixtures_dir: Path
 ) -> dict[str, Any]:
@@ -448,6 +498,76 @@ def build_live_valuation_section(
     return {"namespace": "valuation", "available": True, "source": "reverse-dcf-engine (live)", "data": data}
 
 
+def build_live_vol_section(
+    ticker: str,
+    output_dir: Path,
+    iv_surface_root: Path | str | None = None,
+) -> dict[str, Any] | None:
+    """Day 24 (C1): generate the vol contract on the fly by solving
+    implied-vol-surface's own real raw NSE option-chain capture for
+    ``ticker`` (P12's home-connection job), for a ticker with no committed
+    ``fixtures/vol/<TICKER>.json``.
+
+    Deliberately never attempts a live NSE fetch of its own -- D8's cloud-
+    IP block makes that pointless from inside this subprocess too; it only
+    ever solves a capture someone has already committed. Caller
+    (``build_contract_sections``) only reaches this for a ticker that
+    ``fo_mktlots.csv`` confirms is a genuine F&O underlying -- a non-F&O
+    ticker keeps the existing "no listed options" reason and never calls
+    this at all. Same shape as the other live paths: writes
+    ``<output_dir>/contracts/<TICKER>/vol.json``, a build artifact never
+    committed, and returns ``None`` rather than crashing when the sibling,
+    ``uv``, or a raw capture for this ticker isn't available.
+    """
+    iv_surface_root = Path(iv_surface_root) if iv_surface_root else resolve_iv_surface_root()
+    out_path = output_dir / "contracts" / ticker.upper() / "vol.json"
+    error = generate_vol_contract(ticker, out_path, iv_surface_root)
+    if error is not None:
+        return None
+    try:
+        data = gate_vol.load_contract(out_path)
+    except (ValueError, OSError, json.JSONDecodeError):
+        return None
+    return {"namespace": "vol", "available": True, "source": "implied-vol-surface (live)", "data": data}
+
+
+def build_live_sentiment_section(
+    ticker: str,
+    output_dir: Path,
+    sentiment_root: Path | str | None = None,
+) -> dict[str, Any] | None:
+    """Day 24 (C1): generate the sentiment contract on the fly, via
+    headline-sentiment-vs-price's own ``sentiment.contract`` CLI (default
+    ``vader`` model) run as a subprocess against the sibling checkout's own
+    growing, committed headline corpus, for a ticker with no committed
+    ``fixtures/sentiment/<TICKER>.json``.
+
+    A ticker nobody's corpus mentions still comes back "available" with a
+    real "coverage: none" zero -- the same honest shape GULFOILLUB's own
+    committed fixture already has -- not "not available"; this path makes
+    no live network call of its own, so a missing sibling checkout or
+    missing ``uv`` are the only realistic reasons it returns ``None``.
+    Same shape as the other live paths: writes
+    ``<output_dir>/contracts/<TICKER>/sentiment.json``, a build artifact
+    never committed.
+    """
+    sentiment_root = Path(sentiment_root) if sentiment_root else resolve_sentiment_root()
+    out_path = output_dir / "contracts" / ticker.upper() / "sentiment.json"
+    error = generate_sentiment_contract(ticker, out_path, sentiment_root)
+    if error is not None:
+        return None
+    try:
+        data = gate_sentiment.load_contract(out_path)
+    except (ValueError, OSError, json.JSONDecodeError):
+        return None
+    return {
+        "namespace": "sentiment",
+        "available": True,
+        "source": "headline-sentiment-vs-price (live)",
+        "data": data,
+    }
+
+
 def build_contract_sections(
     ticker: str,
     fixtures_dir: Path | None = None,
@@ -457,6 +577,8 @@ def build_contract_sections(
     risk_lab_root: Path | str | None = None,
     factor_model_root: Path | str | None = None,
     reverse_dcf_root: Path | str | None = None,
+    iv_surface_root: Path | str | None = None,
+    sentiment_root: Path | str | None = None,
 ) -> list[dict[str, Any]]:
     fixtures_dir = fixtures_dir or FIXTURES_DIR
     output_dir = output_dir or OUTPUT_DIR
@@ -475,6 +597,20 @@ def build_contract_sections(
             live_section = build_live_valuation_section(ticker, provider_name, output_dir, reverse_dcf_root)
             if live_section is not None:
                 section = live_section
+        if namespace == "vol" and not section["available"] and "no listed options" not in section["reason"]:
+            live_section = build_live_vol_section(ticker, output_dir, iv_surface_root)
+            if live_section is not None:
+                section = live_section
+            else:
+                section = {
+                    "namespace": "vol",
+                    "available": False,
+                    "reason": vol_no_capture_reason(ticker, resolve_iv_surface_root(iv_surface_root)),
+                }
+        if namespace == "sentiment" and not section["available"]:
+            live_section = build_live_sentiment_section(ticker, output_dir, sentiment_root)
+            if live_section is not None:
+                section = live_section
         sections.append(section)
     return sections
 
@@ -487,6 +623,16 @@ SIZING_EXCLUSION_NOTE = (
     "its three lubricant peers is a sector bet, not a position size (NEXT_STEPS.md Day 2)."
 )
 
+# Day 24 (C1): fundamentals has no live-generation fallback at all, on
+# purpose -- shown unconditionally, whether or not a fixture exists for the
+# subject (GULFOILLUB's own committed fixture gets this note too), so the
+# scope is never mistaken for a bug the way an un-explained "not available"
+# might be.
+FUNDAMENTALS_SCOPE_NOTE = (
+    "built by hand for researched companies only (GULFOILLUB): three-statement-model "
+    "stays driver-based by design, with no live-generation fallback for any other ticker."
+)
+
 
 def contract_section_note(section: dict[str, Any], ticker: str) -> str | None:
     """A one-line caveat for this contract section, beyond its own fields (R5, R6)."""
@@ -497,6 +643,8 @@ def contract_section_note(section: dict[str, Any], ticker: str) -> str | None:
         return gate_factor.method_label(ticker)
     if namespace == "valuation":
         return gate_valuation.financials_source_note(section.get("data"))
+    if namespace == "fundamentals":
+        return FUNDAMENTALS_SCOPE_NOTE
     return None
 
 
@@ -664,6 +812,26 @@ def main(argv: list[str] | None = None) -> int:
             "next to this repo)"
         ),
     )
+    parser.add_argument(
+        "--iv-surface-root",
+        default=None,
+        help=(
+            "implied-vol-surface checkout to shell out to when no "
+            "fixtures/vol/<TICKER>.json is committed, for an F&O ticker with "
+            "a raw NSE capture on disk (default: the STOCKSTALKER_IV_SURFACE_ROOT "
+            "env var, or the sibling checkout next to this repo)"
+        ),
+    )
+    parser.add_argument(
+        "--sentiment-root",
+        default=None,
+        help=(
+            "headline-sentiment-vs-price checkout to shell out to when no "
+            "fixtures/sentiment/<TICKER>.json is committed (default: the "
+            "STOCKSTALKER_SENTIMENT_ROOT env var, or the sibling checkout "
+            "next to this repo)"
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.live and args.offline:
@@ -693,6 +861,8 @@ def main(argv: list[str] | None = None) -> int:
         risk_lab_root=args.risk_lab_root,
         factor_model_root=args.factor_model_root,
         reverse_dcf_root=args.reverse_dcf_root,
+        iv_surface_root=args.iv_surface_root,
+        sentiment_root=args.sentiment_root,
     )
 
     console.print(render_subject_table(subject))

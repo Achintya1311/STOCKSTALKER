@@ -939,3 +939,262 @@ def test_cli_end_to_end_generates_a_live_valuation_section_for_an_uncommitted_ti
     assert "reverse-dcf-engine (live)" in text
     assert "financials source: yfinance, consolidated, 4-5 years" in text
     assert (tmp_path / "contracts" / "TATAELXSI" / "valuation.json").exists()
+
+
+# -- Day 24 (C1): any-stock tear sheet, options and sentiment --
+#
+# vol: unlike risk/factor/valuation, this live path only ever solves a raw
+# NSE chain capture already committed in the sibling checkout (P12's
+# home-connection job) -- it never attempts a fresh fetch, so a ticker with
+# no raw capture gets a distinct "no captured chain" reason, not the
+# generic "fixture not found" every other namespace falls back to.
+# sentiment: reads the sibling's own growing corpus; a zero-match ticker is
+# a real, available "coverage: none" result, not "not available".
+# ``run.generate_vol_contract``/``run.generate_sentiment_contract`` are
+# monkeypatched throughout; the real, end-to-end paths are exercised
+# separately in test_live_vol_contract_smoke.py and
+# test_live_sentiment_contract_smoke.py.
+
+LIVE_VOL_CONTRACT = {
+    "vol": {"atm_iv_30d": 0.2485, "skew_25d": -0.0046, "term_slope": -0.0136, "iv_rank_1y": None}
+}
+
+
+def _fake_generate_vol_contract(ticker, out_path, iv_surface_root):
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(LIVE_VOL_CONTRACT))
+    return None
+
+
+def test_vol_no_capture_reason_names_the_ticker_and_the_sibling():
+    reason = run.vol_no_capture_reason("TATAELXSI", Path("/x/implied-vol-surface"))
+    assert "no captured chain" in reason
+    assert "TATAELXSI" in reason
+    assert "implied-vol-surface" in reason
+
+
+def test_build_live_vol_section_returns_none_on_generation_failure(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_vol_contract", lambda *a, **k: "no captured chain: ...")
+    section = run.build_live_vol_section("TATAELXSI", tmp_path, iv_surface_root=tmp_path)
+    assert section is None
+
+
+def test_build_live_vol_section_accepts_a_plain_string_root(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_vol_contract", lambda *a, **k: "no captured chain: ...")
+    missing_root_as_str = str(tmp_path / "no-such-sibling-checkout")
+    section = run.build_live_vol_section("TATAELXSI", tmp_path, iv_surface_root=missing_root_as_str)
+    assert section is None
+
+
+def test_build_live_vol_section_builds_an_available_section(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_vol_contract", _fake_generate_vol_contract)
+    section = run.build_live_vol_section("RELIANCE", tmp_path, iv_surface_root=tmp_path)
+    assert section == {
+        "namespace": "vol",
+        "available": True,
+        "source": "implied-vol-surface (live)",
+        "data": LIVE_VOL_CONTRACT["vol"],
+    }
+    assert (tmp_path / "contracts" / "RELIANCE" / "vol.json").exists()
+
+
+def test_build_contract_sections_never_regenerates_a_committed_vol_fixture(monkeypatch):
+    # RELIANCE's hand-verified vol fixture must never be regenerated live.
+    def fail(*a, **k):
+        raise AssertionError("must not attempt live generation when a committed fixture exists")
+
+    monkeypatch.setattr(run, "generate_vol_contract", fail)
+    sections = run.build_contract_sections("RELIANCE", FIXTURES)
+    vol_section = next(s for s in sections if s["namespace"] == "vol")
+    assert vol_section["available"] is True
+    assert vol_section["source"] == "implied-vol-surface"
+
+
+def test_build_contract_sections_never_attempts_live_vol_for_a_non_fo_ticker(monkeypatch):
+    # GULFOILLUB is confirmed absent from fo_mktlots.csv (D2) -- the
+    # "no listed options" reason is a checked fact, never a reason to try
+    # to solve a chain that can't exist.
+    def fail(*a, **k):
+        raise AssertionError("must not attempt live generation for a non-F&O ticker")
+
+    monkeypatch.setattr(run, "generate_vol_contract", fail)
+    sections = run.build_contract_sections("GULFOILLUB", FIXTURES)
+    vol_section = next(s for s in sections if s["namespace"] == "vol")
+    assert vol_section["available"] is False
+    assert "no listed options" in vol_section["reason"]
+
+
+def test_build_contract_sections_falls_back_to_live_vol_generation_for_an_fo_ticker(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_vol_contract", _fake_generate_vol_contract)
+    # TATAELXSI is a real F&O underlying (fo_mktlots.csv) with no committed
+    # fixtures/vol/TATAELXSI.json.
+    sections = run.build_contract_sections(
+        "TATAELXSI", FIXTURES, output_dir=tmp_path, iv_surface_root=tmp_path
+    )
+    vol_section = next(s for s in sections if s["namespace"] == "vol")
+    assert vol_section["available"] is True
+    assert vol_section["source"] == "implied-vol-surface (live)"
+    assert vol_section["data"] == LIVE_VOL_CONTRACT["vol"]
+
+
+def test_build_contract_sections_reports_no_captured_chain_when_live_vol_generation_fails(monkeypatch):
+    monkeypatch.setattr(run, "generate_vol_contract", lambda *a, **k: "no captured chain: ...")
+    sections = run.build_contract_sections("TATAELXSI", FIXTURES)
+    vol_section = next(s for s in sections if s["namespace"] == "vol")
+    assert vol_section["available"] is False
+    assert "no captured chain" in vol_section["reason"]
+    assert "TATAELXSI" in vol_section["reason"]
+    # Never the old generic "fixture not found" wording for an F&O ticker --
+    # that phrasing implied a fixture might simply be missing, when the real
+    # reason is that nobody has captured this ticker's chain at all.
+    assert "not found" not in vol_section["reason"]
+
+
+def test_cli_end_to_end_generates_a_live_vol_section_for_an_fo_ticker(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_vol_contract", _fake_generate_vol_contract)
+    rc = run.main(
+        [
+            "--ticker", "TATAELXSI",
+            "--peers", "",
+            "--offline",
+            "--date", "2026-10-17",
+            "--output-dir", str(tmp_path),
+            "--no-charts",
+            "--iv-surface-root", str(tmp_path),
+        ]
+    )
+    assert rc == 0
+    text = (tmp_path / "tearsheet_TATAELXSI_2026-10-17.md").read_text()
+    assert "### Vol" in text
+    assert "implied-vol-surface (live)" in text
+    assert (tmp_path / "contracts" / "TATAELXSI" / "vol.json").exists()
+
+
+LIVE_SENTIMENT_CONTRACT = {
+    "sentiment": {"score_7d": None, "headline_count_7d": 0, "model": "vader", "coverage": "none"}
+}
+
+
+def _fake_generate_sentiment_contract(ticker, out_path, sentiment_root):
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(LIVE_SENTIMENT_CONTRACT))
+    return None
+
+
+def test_build_live_sentiment_section_returns_none_on_generation_failure(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_sentiment_contract", lambda *a, **k: "sibling missing")
+    section = run.build_live_sentiment_section("TATAELXSI", tmp_path, sentiment_root=tmp_path)
+    assert section is None
+
+
+def test_build_live_sentiment_section_accepts_a_plain_string_root(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_sentiment_contract", lambda *a, **k: "sibling missing")
+    missing_root_as_str = str(tmp_path / "no-such-sibling-checkout")
+    section = run.build_live_sentiment_section("TATAELXSI", tmp_path, sentiment_root=missing_root_as_str)
+    assert section is None
+
+
+def test_build_live_sentiment_section_builds_an_available_section_with_honest_zero(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_sentiment_contract", _fake_generate_sentiment_contract)
+    section = run.build_live_sentiment_section("TATAELXSI", tmp_path, sentiment_root=tmp_path)
+    assert section == {
+        "namespace": "sentiment",
+        "available": True,
+        "source": "headline-sentiment-vs-price (live)",
+        "data": LIVE_SENTIMENT_CONTRACT["sentiment"],
+    }
+    assert (tmp_path / "contracts" / "TATAELXSI" / "sentiment.json").exists()
+
+
+def test_build_contract_sections_never_regenerates_a_committed_sentiment_fixture(monkeypatch):
+    def fail(*a, **k):
+        raise AssertionError("must not attempt live generation when a committed fixture exists")
+
+    monkeypatch.setattr(run, "generate_sentiment_contract", fail)
+    sections = run.build_contract_sections("GULFOILLUB", FIXTURES)
+    sentiment_section = next(s for s in sections if s["namespace"] == "sentiment")
+    assert sentiment_section["available"] is True
+    assert sentiment_section["source"] == "headline-sentiment-vs-price"
+
+
+def test_build_contract_sections_falls_back_to_live_sentiment_generation_for_an_uncommitted_ticker(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setattr(run, "generate_sentiment_contract", _fake_generate_sentiment_contract)
+    sections = run.build_contract_sections(
+        "TATAELXSI", FIXTURES, output_dir=tmp_path, sentiment_root=tmp_path
+    )
+    sentiment_section = next(s for s in sections if s["namespace"] == "sentiment")
+    assert sentiment_section["available"] is True
+    assert sentiment_section["source"] == "headline-sentiment-vs-price (live)"
+    assert sentiment_section["data"] == LIVE_SENTIMENT_CONTRACT["sentiment"]
+
+
+def test_build_contract_sections_keeps_not_available_when_live_sentiment_generation_also_fails(monkeypatch):
+    monkeypatch.setattr(run, "generate_sentiment_contract", lambda *a, **k: "sibling missing")
+    sections = run.build_contract_sections("TATAELXSI", FIXTURES)
+    sentiment_section = next(s for s in sections if s["namespace"] == "sentiment")
+    assert sentiment_section["available"] is False
+    assert "not found" in sentiment_section["reason"]
+
+
+def test_cli_end_to_end_generates_a_live_sentiment_section_for_an_uncommitted_ticker(monkeypatch, tmp_path):
+    monkeypatch.setattr(run, "generate_sentiment_contract", _fake_generate_sentiment_contract)
+    rc = run.main(
+        [
+            "--ticker", "TATAELXSI",
+            "--peers", "",
+            "--offline",
+            "--date", "2026-10-17",
+            "--output-dir", str(tmp_path),
+            "--no-charts",
+            "--sentiment-root", str(tmp_path),
+        ]
+    )
+    assert rc == 0
+    text = (tmp_path / "tearsheet_TATAELXSI_2026-10-17.md").read_text()
+    assert "### Sentiment" in text
+    assert "headline-sentiment-vs-price (live)" in text
+    assert "coverage" in text
+    assert (tmp_path / "contracts" / "TATAELXSI" / "sentiment.json").exists()
+
+
+# -- Day 24 (C1): fundamentals has no live-generation path at all --
+
+
+def test_contract_section_note_names_fundamentals_scope_unconditionally():
+    available_section = run.build_contract_section(
+        "fundamentals", run.gate_fundamentals, "three-statement-model", "GULFOILLUB", FIXTURES
+    )
+    assert available_section["available"] is True
+    note = run.contract_section_note(available_section, "GULFOILLUB")
+    assert note == run.FUNDAMENTALS_SCOPE_NOTE
+    assert "GULFOILLUB" in note
+    assert "built by hand" in note
+
+    unavailable_section = run.build_contract_section(
+        "fundamentals", run.gate_fundamentals, "three-statement-model", "TATAELXSI", FIXTURES
+    )
+    assert unavailable_section["available"] is False
+    assert run.contract_section_note(unavailable_section, "TATAELXSI") == run.FUNDAMENTALS_SCOPE_NOTE
+
+
+def test_cli_prints_the_fundamentals_scope_note_for_any_ticker(tmp_path):
+    rc = run.main(
+        [
+            "--ticker", "TATAELXSI",
+            "--peers", "",
+            "--offline",
+            "--date", "2026-10-17",
+            "--output-dir", str(tmp_path),
+            "--no-charts",
+            "--risk-lab-root", str(tmp_path / "no-such-sibling-checkout"),
+            "--factor-model-root", str(tmp_path / "no-such-sibling-checkout"),
+            "--reverse-dcf-root", str(tmp_path / "no-such-sibling-checkout"),
+            "--iv-surface-root", str(tmp_path / "no-such-sibling-checkout"),
+            "--sentiment-root", str(tmp_path / "no-such-sibling-checkout"),
+        ]
+    )
+    assert rc == 0
+    text = (tmp_path / "tearsheet_TATAELXSI_2026-10-17.md").read_text()
+    assert run.FUNDAMENTALS_SCOPE_NOTE in text
