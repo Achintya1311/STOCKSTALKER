@@ -8,19 +8,28 @@ Educational research on historical data. Not investment advice. Not a SEBI-regis
 **Chart:** `outputs/tearsheet_GULFOILLUB_<date>.md` lists the three charts `stockstalker.run` writes to `outputs/` — GULFOILLUB vs. peers rebased to 100, drawdown from peak, rolling 1y volatility.
 **Reproduce:** `python -m stockstalker.backtest --offline` (the finding above) or `python -m stockstalker.run --ticker GULFOILLUB --offline` (the front door below).
 
-The front door to a nine-repo equity research pipeline. One command —
+The front door to a nine-repo equity research pipeline. One command builds
+a tear sheet for any NSE stock —
 
 ```bash
-python -m stockstalker.run --ticker GULFOILLUB --offline
+python -m stockstalker.run --ticker <TICKER> --live
 ```
 
-— pulls together everything the other eight repos have ever found about one
-stock (Gulf Oil Lubricants India) and prints it as a single tear sheet,
-plus writes the same to `outputs/tearsheet_GULFOILLUB_<date>.md`. It also
-runs a separate, smaller daily screen over three unrelated NSE names —
-see "The screen is a separate, smaller thing" below for how the two relate.
+— price signals, risk, factor exposure, a reverse DCF from public
+financials, options for F&O stocks and headline sentiment, falling back
+from a committed fixture to a live run against the sibling repo for any
+ticker that has none, and prints it as a single tear sheet, writing the
+same to `outputs/tearsheet_<TICKER>_<date>.md`. Verified end to end,
+fix-phase Day 25, for RELIANCE (F&O large-cap), CASTROLIND (non-F&O
+mid-cap) and GULFOILLUB (the hand-researched note's subject, from
+committed fixtures) — tear sheets committed as evidence at
+`verification/tearsheets/`. The three-statement model stays driver-based
+by hand for GULFOILLUB only; every other ticker prints that scope note
+instead of a fabricated fundamentals section. It also runs a separate,
+smaller daily screen over three unrelated NSE names — see "The screen is
+a separate, smaller thing" below for how the two relate.
 
-**Status:** Complete (v0.9, Oct 2026). `python -m stockstalker.run --ticker GULFOILLUB` reads every module's findings for the note's stock.
+**Status:** Complete (v0.9, Oct 2026). `python -m stockstalker.run --ticker <ANY> --live` reads every module's live or committed findings for that stock; `--offline` (GULFOILLUB is the default) reads the original hand-researched fixtures.
 
 *Educational research on historical data. Not investment advice. Not a SEBI-registered research analyst.*
 
@@ -111,7 +120,8 @@ The spine of a nine-repo research pipeline. The screen above answers a
 narrow question on its own three-ticker universe — which of those names is
 behaving in a way worth a closer look. The front door above is the
 different, larger thing: one command showing everything the pipeline
-knows about the stock the capstone note is actually being written on.
+knows about any NSE stock, not only the one the capstone note is actually
+being written on.
 
 ## Honest status
 
@@ -237,6 +247,7 @@ numbers for both tables, every run, in `outputs/backtest_<date>.{json,csv,md}`.
 - Day 8's trading costs (`backtest.STT_RATE`, `backtest.STAMP_DUTY_RATE`, `--slippage-bps`) are a flat percentage of position value charged on each entry and exit, not a simulated order-book fill. There is no separate bid-ask spread, no market-impact model, and no partial fills — real execution on ~140-190 round trips a year on these small/mid-cap names would plausibly be worse, not better, than this estimate. `stockstalker.report`'s backtest table still shows only the no-cost numbers (it calls the same `run_backtest`, but renders `strategy_return`/`buy_and_hold_return`, not the `_with_costs` fields) — the cost-adjusted view only exists in this README's Findings section and in `outputs/backtest_<date>.{json,csv,md}`, not in the quick terminal screen.
 - Day 9 is a documentation day, not a code day — no module in `stockstalker/` changed. It corrects a framing error this README carried since Day 1 of the front-door project (and, before that, every earlier checkpoint note): calling the screen "the funnel" that narrows a universe down to the pipeline's one subject. That was never what happened. GULFOILLUB was chosen by hand in `reverse-dcf-engine/research/shortlist.md` against written criteria, and the screen's own 3-ticker universe (RELIANCE, TATACHEM, CROMPTON) has no overlap with it at all — a reader who took the old wording literally would have incorrectly concluded the screen ran over a larger universe at some point and produced GULFOILLUB as its output. It did not. This correction does not change any number in this README; it changes what the numbers are claimed to be downstream of.
 - **Fix-phase Day 5 (CRITIQUES.md D2, R5, R6, R7) — front-door honesty.** `fixtures/fo_mktlots.csv` (NSE's own current F&O lot-size snapshot, fetched 2026-10-17, list dated 2026-09-29 per its Last-Modified header; `fixtures/fo_mktlots_meta.json` records the capture) replaces the old GULFOILLUB-only `UNVERIFIED_CONTRACT_REASONS` special case with a real membership check any ticker goes through (D2, see the amended `vol` bullets above). The `risk` and `factor` sections each gained a one-line sourced caveat printed to both the console and the tear sheet — the Kupiec 99% rejection for `risk` (R5), and the old-Ken-French-method label for `factor` on RELIANCE's contract specifically (R6) — and the `factor` contract's `significant` field now renders as the words "significant"/"not significant" rather than a bare `True`/`False` (R6). The `sizing`-exclusion rationale (R7, already true and already in the tear sheet since Day 2) now also prints to the console, not just the markdown file. None of this changes a single number any contract carries; it only states, next to each number, what that number does and does not mean — the actual 99%/Kupiec figures still only live in monte-carlo-risk-lab's own README until Day 6 adds them to the contract itself.
+- **Fix-phase Day 25 (CRITIQUES.md C1, S10) — the any-stock claim, verified, not just coded.** Days 20–24 built `--live` support for a ticker outside GULFOILLUB's own fixtures, but nobody had actually run it against a non-lubricant, F&O-listed name before this day. `python -m stockstalker.run --ticker <TICKER> --live --no-charts` was run end to end for three real tickers and every tear sheet committed as evidence at `verification/tearsheets/`: RELIANCE (F&O large-cap — `risk`, `factor` and `vol` render from their own already-committed fixtures; `valuation` and `sentiment` generate live, since neither has one), CASTROLIND (non-F&O mid-cap with no committed fixture in any namespace — `valuation`, `risk`, `factor` and `sentiment` all generate live, and `vol` correctly prints "no listed options: not an NSE F&O underlying" rather than a generic "fixture not found"), and GULFOILLUB (`--offline`, the original hand-researched fixtures, unchanged). Every section printed a real number or a specific one-line reason on all three runs — never a placeholder, never a crash. `price_reachable` is `False` for all three under the reverse DCF (method output only, per S5 — no view on whether any of the three is mispriced), and `fundamentals` is unavailable for RELIANCE and CASTROLIND by design, printing `FUNDAMENTALS_SCOPE_NOTE` instead of a fabricated section, since three-statement-model stays driver-based for GULFOILLUB only. This is the verification the front-door paragraph above and the site's StockStalker paragraph now describe (S10: never claim more than a verified run shows).
 
 ## Checkpoint log
 
