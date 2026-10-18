@@ -15,6 +15,7 @@ an afternoon, so they raise distinct exceptions here.
 
 from __future__ import annotations
 
+import datetime as dt
 import os
 import time
 from pathlib import Path
@@ -192,11 +193,23 @@ def get_provider(name: str = "fixtures"):
     return PROVIDERS[name]()
 
 
+def _cache_fetch_date(path: Path) -> dt.date:
+    """The calendar date ``path`` was last written, from its own mtime."""
+    return dt.datetime.fromtimestamp(path.stat().st_mtime).date()
+
+
 def load(ticker: str, provider: str = "fixtures", period: str = "2y", use_cache: bool = True) -> pd.DataFrame:
     """Fetch bars, going through the on-disk cache for live providers.
 
     Fixtures are already local, so caching them would only add a way to serve
     stale data.
+
+    D11: a live fetch is cached for same-day reuse only -- one fetch per
+    ticker per calendar day, not forever. The cache is keyed by the day it
+    was written (its own mtime), so a cache from an earlier day is treated
+    as stale and re-fetched rather than served as if it were today's bar.
+    Pass ``use_cache=False`` (the CLI's ``--refresh``/``--no-cache``) to force
+    a live fetch regardless of the cache's age.
     """
     source = get_provider(provider)
     if provider == "fixtures" or not use_cache:
@@ -204,7 +217,7 @@ def load(ticker: str, provider: str = "fixtures", period: str = "2y", use_cache:
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cached = CACHE_DIR / f"{provider}_{ticker.replace('.', '_')}_{period}.csv"
-    if cached.exists():
+    if cached.exists() and _cache_fetch_date(cached) == dt.date.today():
         return _normalise(pd.read_csv(cached, index_col="date", parse_dates=True), ticker)
 
     df = source.fetch(ticker, period)

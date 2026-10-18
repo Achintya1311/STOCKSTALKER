@@ -152,6 +152,49 @@ def test_cli_rejects_live_and_offline_together():
         run.main(["--ticker", "GULFOILLUB", "--live", "--offline"])
 
 
+@pytest.mark.parametrize("flag", ["--refresh", "--no-cache"])
+def test_cli_refresh_flag_threads_use_cache_false_through(tmp_path, monkeypatch, flag):
+    """D11: ``--refresh``/``--no-cache`` must reach every ``load()``/
+    ``local_csv_path()`` call site through ``use_cache``, not just be parsed
+    and ignored.
+    """
+    seen_use_cache = {}
+
+    def fake_build_subject_section(ticker, provider_name, cfg, use_cache=True):
+        seen_use_cache["subject"] = use_cache
+        return real_build_subject_section(ticker, provider_name, cfg, use_cache=use_cache)
+
+    def fake_build_peer_table(tickers, provider_name, errors=None, use_cache=True):
+        seen_use_cache["peers"] = use_cache
+        return real_build_peer_table(tickers, provider_name, errors, use_cache=use_cache)
+
+    real_build_subject_section = run.build_subject_section
+    real_build_peer_table = run.build_peer_table
+    monkeypatch.setattr(run, "build_subject_section", fake_build_subject_section)
+    monkeypatch.setattr(run, "build_peer_table", fake_build_peer_table)
+
+    rc = run.main(["--ticker", "GULFOILLUB", "--offline", flag, "--output-dir", str(tmp_path)])
+
+    assert rc == 0
+    assert seen_use_cache == {"subject": False, "peers": False}
+
+
+def test_cli_without_refresh_defaults_to_use_cache_true(tmp_path, monkeypatch):
+    seen_use_cache = {}
+    real_build_subject_section = run.build_subject_section
+
+    def fake_build_subject_section(ticker, provider_name, cfg, use_cache=True):
+        seen_use_cache["subject"] = use_cache
+        return real_build_subject_section(ticker, provider_name, cfg, use_cache=use_cache)
+
+    monkeypatch.setattr(run, "build_subject_section", fake_build_subject_section)
+
+    rc = run.main(["--ticker", "GULFOILLUB", "--offline", "--output-dir", str(tmp_path)])
+
+    assert rc == 0
+    assert seen_use_cache == {"subject": True}
+
+
 def test_cli_reports_missing_ticker_without_traceback(capsys):
     rc = run.main(["--ticker", "NOPE", "--offline"])
     assert rc == 1

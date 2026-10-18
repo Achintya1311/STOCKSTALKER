@@ -1,5 +1,8 @@
 """Provider tests. All offline: no network, no keys, no flakes."""
 
+import datetime as dt
+import os
+
 import pandas as pd
 import pytest
 
@@ -11,6 +14,24 @@ from stockstalker.data.providers import (
     ProviderError,
     RateLimited,
 )
+
+
+class _StubLiveProvider:
+    """A fake live provider that counts fetches and never touches the network."""
+
+    name = "stub"
+
+    def __init__(self):
+        self.calls = 0
+
+    def fetch(self, ticker: str, period: str = "2y") -> pd.DataFrame:
+        self.calls += 1
+        df = pd.DataFrame(
+            {"open": [1.0], "high": [1.1], "low": [0.9], "close": [1.0], "volume": [100]},
+            index=pd.to_datetime(["2026-01-01"]),
+        )
+        df.index.name = "date"
+        return df
 
 
 def test_fixture_provider_lists_committed_tickers():
@@ -131,6 +152,70 @@ def test_missing_key_points_at_the_offline_path():
 def test_load_defaults_to_fixtures():
     df = providers.load("TATACHEM.NS")
     assert not df.empty
+
+
+# -- D11: a cached live fetch must expire, not be served forever ----------
+
+
+def _patch_stub_provider(monkeypatch, tmp_path):
+    monkeypatch.setattr(providers, "CACHE_DIR", tmp_path)
+    stub = _StubLiveProvider()
+    monkeypatch.setitem(providers.PROVIDERS, "stub", lambda: stub)
+    return stub
+
+
+def test_load_reuses_a_same_day_cache_without_refetching(tmp_path, monkeypatch):
+    stub = _patch_stub_provider(monkeypatch, tmp_path)
+
+    providers.load("X.NS", provider="stub")
+    providers.load("X.NS", provider="stub")
+
+    assert stub.calls == 1
+
+
+def test_load_refetches_once_the_cache_is_from_an_earlier_day(tmp_path, monkeypatch):
+    """D11: ``load()`` used to return a cached live CSV forever -- no TTL, no
+    date check -- once one existed for a ticker. A cache written on an
+    earlier day must be treated as stale and re-fetched, not served as if it
+    were today's bar.
+    """
+    stub = _patch_stub_provider(monkeypatch, tmp_path)
+
+    providers.load("X.NS", provider="stub")
+    assert stub.calls == 1
+
+    cached = tmp_path / "stub_X_NS_2y.csv"
+    assert cached.exists()
+    yesterday = (dt.datetime.now() - dt.timedelta(days=1)).timestamp()
+    os.utime(cached, (yesterday, yesterday))
+
+    providers.load("X.NS", provider="stub")
+    assert stub.calls == 2, "a cache from an earlier day must not be served forever (D11)"
+
+
+def test_use_cache_false_always_refetches_live(tmp_path, monkeypatch):
+    stub = _patch_stub_provider(monkeypatch, tmp_path)
+
+    providers.load("X.NS", provider="stub")
+    providers.load("X.NS", provider="stub", use_cache=False)
+
+    assert stub.calls == 2
+
+
+def test_local_csv_path_refetches_a_stale_cache_too(tmp_path, monkeypatch):
+    """D11: the three live satellite paths (``run.py``'s ``local_csv_path``
+    call sites) go through the same ``load()`` cache, so they must pick up
+    the same staleness fix rather than being re-verified separately.
+    """
+    stub = _patch_stub_provider(monkeypatch, tmp_path)
+
+    providers.local_csv_path("X.NS", provider="stub")
+    cached = tmp_path / "stub_X_NS_2y.csv"
+    yesterday = (dt.datetime.now() - dt.timedelta(days=1)).timestamp()
+    os.utime(cached, (yesterday, yesterday))
+
+    providers.local_csv_path("X.NS", provider="stub")
+    assert stub.calls == 2
 
 
 def test_get_provider_rejects_unknown_names():

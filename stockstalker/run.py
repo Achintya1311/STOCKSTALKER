@@ -179,9 +179,11 @@ def trailing_volatility(df, window: int = TRADING_DAYS_PER_YEAR) -> float | None
     return round(float(daily_returns.std(ddof=1) * (TRADING_DAYS_PER_YEAR**0.5)), 4)
 
 
-def build_subject_section(ticker: str, provider_name: str, cfg: dict[str, Any]) -> dict[str, Any]:
+def build_subject_section(
+    ticker: str, provider_name: str, cfg: dict[str, Any], use_cache: bool = True
+) -> dict[str, Any]:
     """Price section for the subject: the screen's own signals, score and liquidity."""
-    df = load(to_yf_ticker(ticker), provider=provider_name)
+    df = load(to_yf_ticker(ticker), provider=provider_name, use_cache=use_cache)
     signals = compute_signals(df, cfg)
     return {
         "ticker": ticker.upper(),
@@ -194,7 +196,10 @@ def build_subject_section(ticker: str, provider_name: str, cfg: dict[str, Any]) 
 
 
 def build_peer_table(
-    tickers: list[str], provider_name: str, errors: list[str] | None = None
+    tickers: list[str],
+    provider_name: str,
+    errors: list[str] | None = None,
+    use_cache: bool = True,
 ) -> list[dict[str, Any]]:
     """One row per ticker: trailing 1y return, 1y annualised volatility, 20d ADV.
 
@@ -214,7 +219,7 @@ def build_peer_table(
             continue
         seen.add(ticker.upper())
         try:
-            df = load(to_yf_ticker(ticker), provider=provider_name)
+            df = load(to_yf_ticker(ticker), provider=provider_name, use_cache=use_cache)
         except ProviderError as exc:
             errors.append(f"{ticker}: {exc}")
             continue
@@ -235,6 +240,7 @@ def write_charts(
     provider_name: str,
     output_dir: Path,
     errors: list[str] | None = None,
+    use_cache: bool = True,
 ) -> list[Path]:
     """Day 7: rebased comparison, subject drawdown, subject rolling volatility.
 
@@ -249,7 +255,7 @@ def write_charts(
     for ticker in [subject_ticker, *peer_tickers]:
         yf_ticker = to_yf_ticker(ticker)
         try:
-            frames[ticker.upper()] = load(yf_ticker, provider=provider_name)
+            frames[ticker.upper()] = load(yf_ticker, provider=provider_name, use_cache=use_cache)
         except ProviderError as exc:
             errors.append(f"{ticker}: {exc}")
 
@@ -391,6 +397,7 @@ def build_live_risk_section(
     provider_name: str,
     output_dir: Path,
     risk_lab_root: Path | str | None = None,
+    use_cache: bool = True,
 ) -> dict[str, Any] | None:
     """Day 21 (C1): generate the risk contract on the fly, via
     monte-carlo-risk-lab's own CLI run as a subprocess against the sibling
@@ -409,7 +416,7 @@ def build_live_risk_section(
     has for a ticker nobody has built a fixture for yet.
     """
     try:
-        prices_csv = local_csv_path(to_yf_ticker(ticker), provider=provider_name)
+        prices_csv = local_csv_path(to_yf_ticker(ticker), provider=provider_name, use_cache=use_cache)
     except ProviderError:
         return None
     # ``risk_lab_root`` arrives as a plain string from argparse's
@@ -433,6 +440,7 @@ def build_live_factor_section(
     provider_name: str,
     output_dir: Path,
     factor_model_root: Path | str | None = None,
+    use_cache: bool = True,
 ) -> dict[str, Any] | None:
     """Day 22 (C1): generate the factor contract on the fly, via
     fama-french-factor-model's ``factors.stock`` CLI (the Day 22
@@ -447,7 +455,7 @@ def build_live_factor_section(
     subprocess itself isn't available.
     """
     try:
-        prices_csv = local_csv_path(to_yf_ticker(ticker), provider=provider_name)
+        prices_csv = local_csv_path(to_yf_ticker(ticker), provider=provider_name, use_cache=use_cache)
     except ProviderError:
         return None
     factor_model_root = Path(factor_model_root) if factor_model_root else resolve_factor_model_root()
@@ -467,6 +475,7 @@ def build_live_valuation_section(
     provider_name: str,
     output_dir: Path,
     reverse_dcf_root: Path | str | None = None,
+    use_cache: bool = True,
 ) -> dict[str, Any] | None:
     """Day 23 (C1): generate the valuation contract on the fly, via
     reverse-dcf-engine's ``reverse_dcf.solve --live-financials`` CLI (the
@@ -483,7 +492,7 @@ def build_live_valuation_section(
     the price this function already supplies) isn't available.
     """
     try:
-        prices_csv = local_csv_path(to_yf_ticker(ticker), provider=provider_name)
+        prices_csv = local_csv_path(to_yf_ticker(ticker), provider=provider_name, use_cache=use_cache)
     except ProviderError:
         return None
     reverse_dcf_root = Path(reverse_dcf_root) if reverse_dcf_root else resolve_reverse_dcf_root()
@@ -579,6 +588,7 @@ def build_contract_sections(
     reverse_dcf_root: Path | str | None = None,
     iv_surface_root: Path | str | None = None,
     sentiment_root: Path | str | None = None,
+    use_cache: bool = True,
 ) -> list[dict[str, Any]]:
     fixtures_dir = fixtures_dir or FIXTURES_DIR
     output_dir = output_dir or OUTPUT_DIR
@@ -586,15 +596,21 @@ def build_contract_sections(
     for namespace, gate_module, source_repo in CONTRACT_NAMESPACES:
         section = build_contract_section(namespace, gate_module, source_repo, ticker, fixtures_dir)
         if namespace == "risk" and not section["available"]:
-            live_section = build_live_risk_section(ticker, provider_name, output_dir, risk_lab_root)
+            live_section = build_live_risk_section(
+                ticker, provider_name, output_dir, risk_lab_root, use_cache=use_cache
+            )
             if live_section is not None:
                 section = live_section
         if namespace == "factor" and not section["available"]:
-            live_section = build_live_factor_section(ticker, provider_name, output_dir, factor_model_root)
+            live_section = build_live_factor_section(
+                ticker, provider_name, output_dir, factor_model_root, use_cache=use_cache
+            )
             if live_section is not None:
                 section = live_section
         if namespace == "valuation" and not section["available"]:
-            live_section = build_live_valuation_section(ticker, provider_name, output_dir, reverse_dcf_root)
+            live_section = build_live_valuation_section(
+                ticker, provider_name, output_dir, reverse_dcf_root, use_cache=use_cache
+            )
             if live_section is not None:
                 section = live_section
         if namespace == "vol" and not section["available"] and "no listed options" not in section["reason"]:
@@ -776,6 +792,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--offline", action="store_true", help="explicit fixtures path (already the default)"
     )
+    parser.add_argument(
+        "--refresh",
+        "--no-cache",
+        dest="refresh",
+        action="store_true",
+        help=(
+            "force a live re-fetch even if a same-day cached fetch exists "
+            "(D11: a cached --live fetch is otherwise reused for the rest of the day)"
+        ),
+    )
     parser.add_argument("--date", default=None, help="override the generated date (mainly for tests)")
     parser.add_argument(
         "--no-charts",
@@ -838,6 +864,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--live and --offline are mutually exclusive")
 
     provider_name = "yfinance" if args.live else "fixtures"
+    use_cache = not args.refresh
     cfg = load_config(Path(args.config))
     peers = [p.strip() for p in args.peers.split(",") if p.strip()]
     generated = args.date or date.today().isoformat()
@@ -848,12 +875,12 @@ def main(argv: list[str] | None = None) -> int:
     errors: list[str] = []
 
     try:
-        subject = build_subject_section(args.ticker, provider_name, cfg)
+        subject = build_subject_section(args.ticker, provider_name, cfg, use_cache=use_cache)
     except ProviderError as exc:
         console.print(f"[red]![/red] {args.ticker}: {exc}")
         return 1
 
-    peer_rows = build_peer_table([args.ticker, *peers], provider_name, errors)
+    peer_rows = build_peer_table([args.ticker, *peers], provider_name, errors, use_cache=use_cache)
     contract_sections = build_contract_sections(
         args.ticker,
         provider_name=provider_name,
@@ -863,6 +890,7 @@ def main(argv: list[str] | None = None) -> int:
         reverse_dcf_root=args.reverse_dcf_root,
         iv_surface_root=args.iv_surface_root,
         sentiment_root=args.sentiment_root,
+        use_cache=use_cache,
     )
 
     console.print(render_subject_table(subject))
@@ -876,7 +904,7 @@ def main(argv: list[str] | None = None) -> int:
 
     chart_paths: list[Path] = []
     if not args.no_charts:
-        chart_paths = write_charts(args.ticker, peers, provider_name, out_dir, errors)
+        chart_paths = write_charts(args.ticker, peers, provider_name, out_dir, errors, use_cache=use_cache)
         for chart_path in chart_paths:
             console.print(f"chart: {chart_path}")
 
