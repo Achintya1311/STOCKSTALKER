@@ -15,6 +15,17 @@ Two honest outcomes, both asserted on:
   only this one repo): skip, rather than silently pass or fail, so a skip
   in the test report means exactly "no sibling checkout here", never
   "the live path was verified."
+
+TATAELXSI's own real fixture only overlaps IIMA's factor history by 14
+months (fama-french-factor-model/factors.stock's FF3+WML spec needs 5
+parameters incl. intercept, 4 factor columns). Before fama-french-factor-
+model's D15 fix (critiques/2026-10-18-fama-french-factor-model-1.md,
+NEXT_STEPS.md day 39) this repo had no minimum-sample floor at all and
+silently returned a "result" from those 14 months; D15 added a 3x-the-
+parameter-count floor (>=15 months here), so this sibling checkout's own
+subprocess now correctly declines TATAELXSI as insufficient data rather
+than fabricating a number -- the exact behaviour the day 39 fix was meant
+to produce, confirmed here against the real checkout.
 """
 
 from __future__ import annotations
@@ -35,25 +46,14 @@ def test_build_live_factor_section_against_the_real_sibling_checkout(tmp_path):
             "to a real sibling checkout to actually exercise the live path."
         )
 
+    # TATAELXSI's 14-month overlap with IIMA's factor history is below
+    # fama-french-factor-model's D15 floor (3x FF3+WML's 5 parameters = 15
+    # months), so the sibling's own CLI now declines with a one-line
+    # reason instead of writing a contract -- build_live_factor_section
+    # reports that the same way as any other live-path failure (sibling
+    # missing, uv missing): None, not a fabricated "available" section.
     section = run.build_live_factor_section("TATAELXSI", "fixtures", tmp_path)
 
-    assert section is not None, "the real subprocess call failed -- see stderr above"
-    assert section["namespace"] == "factor"
-    assert section["available"] is True
-    assert section["source"] == "fama-french-factor-model (live)"
-    data = section["data"]
-    assert set(data) == {"alpha_annual", "alpha_t", "significant", "loadings"}
-    # TATAELXSI's own real OHLCV fixture (496 daily closes, committed Day
-    # 20) regressed against IIMA's factors through `factors.stock` -- real
-    # numbers, not a stub, confirmed by hand against the same command run
-    # directly in fama-french-factor-model this same day (Day 22). Only 14
-    # months overlap (IIMA's own history stops 2025-12, and TATAELXSI's
-    # fixture starts mid-2024) -- an honestly small sample, reported as-is.
-    assert data["alpha_annual"] == pytest.approx(-0.17698389510750168, rel=1e-6)
-    assert data["alpha_t"] == pytest.approx(-0.9796779615257218, rel=1e-6)
-    assert data["significant"] is False
-    assert set(data["loadings"]) == {"mkt", "smb", "hml", "wml"}
-    assert data["loadings"]["mkt"] == pytest.approx(0.5224708626452492, rel=1e-6)
-
+    assert section is None
     contract_path = tmp_path / "contracts" / "TATAELXSI" / "factor.json"
-    assert contract_path.exists()
+    assert not contract_path.exists()
