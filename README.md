@@ -139,8 +139,8 @@ Until that passes, this is a scaffold.
 
 Every source is free. This project never requires a paid tier, a subscription, or a funded account.
 
-- **yfinance** — daily OHLCV for NSE tickers, no key required
-- **Alpha Vantage** — free tier, 25 requests/day, key read from `.env` and never committed
+- **yfinance** — daily OHLCV for NSE tickers, no key required. The only provider any default or `--live` code path actually selects today
+- **Alpha Vantage** — implemented and tested (`AlphaVantageProvider`), free tier, 25 requests/day, key read from `.env` and never committed, but not wired into any default path, CLI flag, or workflow yet — nothing currently runs `--provider alphavantage`
 - **Committed fixtures** — two years of daily bars for three NSE names, so everything runs offline
 
 ## How to run
@@ -299,7 +299,7 @@ Satellites add keys under their own namespace — `factor`, `risk`, `sizing`, `s
 
 ## Exam mapping
 
-Series XV ch.15 (technical analysis), ch.12.12 (measuring liquidity of equity shares); Series VIII (volume and open interest).
+Series XV ch.15 (technical analysis), ch.12.12 (measuring liquidity of equity shares); Series VIII (volume). Open interest is not computed by this repo — that is `implied-vol-surface`'s option-chain territory.
 
 ---
 
