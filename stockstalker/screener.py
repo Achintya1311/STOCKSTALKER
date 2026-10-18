@@ -38,7 +38,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "trend": {"method": "sma", "fast": 20, "slow": 50},
     "momentum": {"rsi_period": 14, "macd_fast": 12, "macd_slow": 26, "macd_signal": 9},
     "volume": {"z_window": 20, "obv_window": 20},
-    "filters": {"min_adv_20d": 0, "min_score": 0.0},
+    "filters": {"min_turnover_20d": 10_000_000, "min_score": 0.0},
 }
 
 
@@ -126,13 +126,17 @@ def screen_ticker(ticker: str, provider_name: str, cfg: dict[str, Any]) -> dict[
 
 
 def apply_filters(candidates: list[dict[str, Any]], filters: dict[str, Any]) -> list[dict[str, Any]]:
-    """Drop candidates that fail the configured liquidity or score gate."""
-    min_adv = filters.get("min_adv_20d", 0)
+    """Drop candidates that fail the configured liquidity or score gate.
+
+    Liquidity gates on ``turnover_20d`` (rupee traded value), not raw share
+    volume, so it compares fairly across stocks at different price levels.
+    """
+    min_turnover = filters.get("min_turnover_20d", 0)
     min_score = filters.get("min_score", 0.0)
     return [
         c
         for c in candidates
-        if c["liquidity"]["adv_20d"] >= min_adv and c["score"] >= min_score
+        if c["liquidity"]["turnover_20d"] >= min_turnover and c["score"] >= min_score
     ]
 
 

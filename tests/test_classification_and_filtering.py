@@ -222,9 +222,10 @@ def test_changing_weights_flips_which_of_two_opposed_candidates_ranks_first():
 # ---------------------------------------------------------------------------
 
 # Six tickers, each excluded (or not) for a distinct, independently-verifiable
-# reason once both a score gate and a liquidity gate apply together:
+# reason once both a score gate and a liquidity gate (now turnover-based,
+# D12/Day 27) apply together:
 #
-#            regime                    passes score (>=0.65)?  passes liquidity (>=100k)?
+#            regime                    passes score (>=0.65)?  passes liquidity (>=MIN_TURNOVER_20D)?
 #   ROCKET   strong_up_highvol          yes                      yes            -> survives
 #   PENNY    thin_rocket                yes                      no (illiquid)  -> dropped
 #   MEGACAP  flat_megacap               no (flat)                yes            -> dropped
@@ -242,7 +243,10 @@ TICKER_REGIME = {
 }
 
 MIN_SCORE = 0.65
-MIN_ADV_20D = 100_000
+# CHOPPY.NS's turnover_20d (flat 100,000-share volume x its ~100.2 average
+# close over the tail window) lands exactly here by construction -- see
+# test_liquidity_gate_boundary_is_inclusive.
+MIN_TURNOVER_20D = 10_020_000.0
 
 
 @pytest.fixture
@@ -267,7 +271,7 @@ def synthetic_universe(tmp_path, monkeypatch):
 def test_combined_score_and_liquidity_gates_keep_only_the_one_ticker_that_clears_both(
     cfg, synthetic_universe
 ):
-    filters = {"min_adv_20d": MIN_ADV_20D, "min_score": MIN_SCORE}
+    filters = {"min_turnover_20d": MIN_TURNOVER_20D, "min_score": MIN_SCORE}
     cfg_run = {**cfg, "filters": filters}
     screen = screener.build_screen(synthetic_universe, "fixtures", cfg_run, "TEST", "2026-01-01")
 
@@ -282,7 +286,7 @@ def test_each_dropped_ticker_was_excluded_for_its_own_documented_reason(cfg, syn
     Recompute the raw (pre-filter) numbers and check each ticker against the
     gate it was designed to fail."""
     errors: list[str] = []
-    unfiltered_cfg = {**cfg, "filters": {"min_adv_20d": 0, "min_score": 0.0}}
+    unfiltered_cfg = {**cfg, "filters": {"min_turnover_20d": 0, "min_score": 0.0}}
     screen = screener.build_screen(
         synthetic_universe, "fixtures", unfiltered_cfg, "TEST", "2026-01-01", errors
     )
@@ -293,7 +297,7 @@ def test_each_dropped_ticker_was_excluded_for_its_own_documented_reason(cfg, syn
         return by_ticker[ticker]["score"] >= MIN_SCORE
 
     def passes_liquidity(ticker):
-        return by_ticker[ticker]["liquidity"]["adv_20d"] >= MIN_ADV_20D
+        return by_ticker[ticker]["liquidity"]["turnover_20d"] >= MIN_TURNOVER_20D
 
     assert passes_score("ROCKET.NS") and passes_liquidity("ROCKET.NS")
     assert passes_score("PENNY.NS") and not passes_liquidity("PENNY.NS")
@@ -304,19 +308,20 @@ def test_each_dropped_ticker_was_excluded_for_its_own_documented_reason(cfg, syn
 
 
 def test_liquidity_gate_boundary_is_inclusive(cfg, synthetic_universe):
-    """CHOPPY.NS's 20-day average volume is built to land exactly on MIN_ADV_20D.
-    ``>=`` means it should clear the liquidity gate on that value alone - this
-    pins down the boundary semantics apply_filters actually implements."""
+    """CHOPPY.NS's 20-day average turnover is built to land exactly on
+    MIN_TURNOVER_20D. ``>=`` means it should clear the liquidity gate on that
+    value alone - this pins down the boundary semantics apply_filters
+    actually implements."""
     errors: list[str] = []
-    unfiltered_cfg = {**cfg, "filters": {"min_adv_20d": 0, "min_score": 0.0}}
+    unfiltered_cfg = {**cfg, "filters": {"min_turnover_20d": 0, "min_score": 0.0}}
     screen = screener.build_screen(
         synthetic_universe, "fixtures", unfiltered_cfg, "TEST", "2026-01-01", errors
     )
     choppy = next(c for c in screen["candidates"] if c["ticker"] == "CHOPPY.NS")
-    assert choppy["liquidity"]["adv_20d"] == pytest.approx(MIN_ADV_20D, rel=0.01)
+    assert choppy["liquidity"]["turnover_20d"] == pytest.approx(MIN_TURNOVER_20D, rel=0.01)
 
     liquidity_only = screener.apply_filters(
-        screen["candidates"], {"min_adv_20d": MIN_ADV_20D, "min_score": 0.0}
+        screen["candidates"], {"min_turnover_20d": MIN_TURNOVER_20D, "min_score": 0.0}
     )
     assert "CHOPPY.NS" in [c["ticker"] for c in liquidity_only]
 
@@ -328,11 +333,11 @@ def test_tightening_the_score_gate_monotonically_shrinks_the_survivor_set(cfg, s
     survivors at a stricter threshold are always a subset of survivors at a
     looser one."""
     errors: list[str] = []
-    unfiltered_cfg = {**cfg, "filters": {"min_adv_20d": 0, "min_score": 0.0}}
+    unfiltered_cfg = {**cfg, "filters": {"min_turnover_20d": 0, "min_score": 0.0}}
     screen = screener.build_screen(
         synthetic_universe, "fixtures", unfiltered_cfg, "TEST", "2026-01-01", errors
     )
-    loose = {c["ticker"] for c in screener.apply_filters(screen["candidates"], {"min_adv_20d": 0, "min_score": 0.3})}
-    strict = {c["ticker"] for c in screener.apply_filters(screen["candidates"], {"min_adv_20d": 0, "min_score": 0.7})}
+    loose = {c["ticker"] for c in screener.apply_filters(screen["candidates"], {"min_turnover_20d": 0, "min_score": 0.3})}
+    strict = {c["ticker"] for c in screener.apply_filters(screen["candidates"], {"min_turnover_20d": 0, "min_score": 0.7})}
     assert strict.issubset(loose)
     assert strict != loose  # the tightened gate must actually drop someone, or this proves nothing

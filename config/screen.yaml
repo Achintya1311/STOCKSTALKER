@@ -28,5 +28,9 @@ volume:
 
 # Candidates are dropped before ranking if they fail either gate.
 filters:
-  min_adv_20d: 0        # 20-day average daily volume floor
+  # 20-day average turnover floor, in rupees (traded value = price x volume,
+  # not raw share count, so it compares fairly across stocks at different
+  # price levels). 1,00,00,000 = Rs 1 crore; the current 3-name universe
+  # (RELIANCE, TATACHEM, CROMPTON) clears it by 35x or more.
+  min_turnover_20d: 10000000
   min_score: 0.0         # final blended score floor, in [0, 1]

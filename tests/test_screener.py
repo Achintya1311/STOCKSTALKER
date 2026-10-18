@@ -105,21 +105,33 @@ def test_liquidity_metrics_matches_manual_mean(reliance):
     )
 
 
-def test_apply_filters_drops_below_min_adv():
+def test_apply_filters_drops_below_min_turnover():
     candidates = [
-        {"ticker": "A", "score": 0.9, "liquidity": {"adv_20d": 100}},
-        {"ticker": "B", "score": 0.9, "liquidity": {"adv_20d": 100_000}},
+        {"ticker": "A", "score": 0.9, "liquidity": {"turnover_20d": 100}},
+        {"ticker": "B", "score": 0.9, "liquidity": {"turnover_20d": 100_000}},
     ]
-    kept = screener.apply_filters(candidates, {"min_adv_20d": 1000, "min_score": 0.0})
+    kept = screener.apply_filters(candidates, {"min_turnover_20d": 1000, "min_score": 0.0})
     assert [c["ticker"] for c in kept] == ["B"]
+
+
+def test_apply_filters_gates_on_turnover_not_raw_share_volume():
+    """A cheap, high-volume name and an expensive, low-volume name with equal
+    turnover should be treated the same by the liquidity gate -- proof it
+    reads ``turnover_20d``, not ``adv_20d``, which would rank them oppositely."""
+    candidates = [
+        {"ticker": "CHEAP_HIGHVOL", "score": 0.9, "liquidity": {"adv_20d": 1_000_000, "turnover_20d": 5_000}},
+        {"ticker": "EXPENSIVE_LOWVOL", "score": 0.9, "liquidity": {"adv_20d": 10, "turnover_20d": 50_000}},
+    ]
+    kept = screener.apply_filters(candidates, {"min_turnover_20d": 10_000, "min_score": 0.0})
+    assert [c["ticker"] for c in kept] == ["EXPENSIVE_LOWVOL"]
 
 
 def test_apply_filters_drops_below_min_score():
     candidates = [
-        {"ticker": "A", "score": 0.2, "liquidity": {"adv_20d": 100}},
-        {"ticker": "B", "score": 0.8, "liquidity": {"adv_20d": 100}},
+        {"ticker": "A", "score": 0.2, "liquidity": {"turnover_20d": 100}},
+        {"ticker": "B", "score": 0.8, "liquidity": {"turnover_20d": 100}},
     ]
-    kept = screener.apply_filters(candidates, {"min_adv_20d": 0, "min_score": 0.5})
+    kept = screener.apply_filters(candidates, {"min_turnover_20d": 0, "min_score": 0.5})
     assert [c["ticker"] for c in kept] == ["B"]
 
 
