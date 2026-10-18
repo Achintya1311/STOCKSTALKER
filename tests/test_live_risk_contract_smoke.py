@@ -47,12 +47,18 @@ def test_build_live_risk_section_against_the_real_sibling_checkout(tmp_path):
     # 20) run through mcsim.portfolio at its CLI defaults (confidence 0.95
     # 0.99, horizon 20, paths 1e6, seed 42) -- real numbers, not a stub,
     # confirmed by hand against the same command run directly in
-    # monte-carlo-risk-lab this same day (Day 21).
+    # monte-carlo-risk-lab this same day (Day 21). var_95/cvar_95/var_99/
+    # cvar_99 come from the historical method, unaffected by D14's Day 37
+    # fix (18 Oct 2026) to the Monte Carlo path simulator; max_dd_sim is
+    # the mean of the simulated drawdown distribution, which D14's fix
+    # changed here from -0.0970035516209491 (biased pessimistic by the
+    # double-applied GBM convexity correction) to the value below,
+    # reconfirmed by hand the same way post-fix.
     assert data["var_95"] == pytest.approx(-0.1636326908838061, rel=1e-6)
     assert data["cvar_95"] == pytest.approx(-0.19037324003810938, rel=1e-6)
     assert data["var_99"] == pytest.approx(-0.21432773266847796, rel=1e-6)
     assert data["cvar_99"] == pytest.approx(-0.22225330499942367, rel=1e-6)
-    assert data["max_dd_sim"] == pytest.approx(-0.0970035516209491, rel=1e-5)
+    assert data["max_dd_sim"] == pytest.approx(-0.09527769310141775, rel=1e-5)
     assert data["kupiec_95"]["reject_at_5pct"] is False
     assert data["kupiec_99"]["reject_at_5pct"] is False
 
