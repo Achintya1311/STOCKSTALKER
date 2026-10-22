@@ -35,10 +35,16 @@ def screen(cfg):
 
 
 def test_load_contract_reads_the_real_headline_sentiment_fixture():
+    """INFY.json is regenerated from a real run of sentiment.contract against the
+    current corpus (P41/P42): the September headline that gave INFY its one-time
+    0.296 score has aged out of the trailing 7-day window, so the honest contract
+    is empty, not stale."""
     loaded = sentiment.load_contract(INFY_CONTRACT)
     assert set(loaded) == sentiment.REQUIRED_SENTIMENT_KEYS
-    assert loaded["score_7d"] == pytest.approx(0.296)
+    assert loaded["score_7d"] is None
+    assert loaded["headline_count_7d"] == 0
     assert loaded["model"] == "vader"
+    assert loaded["coverage"] == "none"
 
 
 def test_load_contract_rejects_a_sentiment_block_missing_keys(tmp_path):
