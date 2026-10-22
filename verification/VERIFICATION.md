@@ -6,11 +6,10 @@ Machine-owned by `tools/verify.py` (called from the hub) - don't hand-edit. Full
 | Date | Commit | Passed | Failed | Skipped | New test IDs | Repeated (no new coverage) | Notes |
 |------|--------|--------|--------|---------|--------------|------------------------------|-------|
 | 2026-09-10 | `59ac4e2` | 148 | 0 | 1 | 149 | 0 | Baseline + first classification/multi-layer-filtering/live-provider-contract pass: 6 engineered OHLCV regimes verifying trend/momentum/volume classify correctly, config-weight responsiveness, end-to-end multi-layer score+liquidity filtering with per-exclusion-reason checks, and a real (sandbox-blocked) live-network contract test. |
+| 2026-10-22 | `7c5e994` | 433 | 0 | 0 | 285 | 148 | Day 54 (P54): re-verify tools/verify.py after switching run_pytest() from python -m pytest to uv run --with pytest pytest, confirming recorded totals match the bare-pytest-equivalent ground truth (433 passed, 0 failed, 0 skipped, uv run --with pytest pytest -q, 316.39s) |
 <!-- VERIFICATION:END -->
 
 ## Currently open (failing or skipped as of the latest run)
 
-Next time this project is verified: retry these differently (a new angle, or after whatever blocked them has changed) rather than leaving them standing indefinitely or re-running them unchanged.
-
-- `tests.test_live_provider_smoke::test_yfinance_provider_gives_real_live_values_or_fails_cleanly` — **skipped**: no live network reachable in this sandbox (no rows returned for RELIANCE.NS); this is the offline/zero-spend default working as intended, not a scanner bug. Re-run in an environment with outbound network to actually exercise the live path.
+Nothing open - every collected test passed on the latest run.
 

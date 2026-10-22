@@ -760,6 +760,2188 @@
         "tests.test_volume::test_volume_zscore_rejects_small_window"
       ],
       "repeated_from_prior_run": []
+    },
+    {
+      "date": "2026-10-22",
+      "commit": "7c5e994",
+      "notes": "Day 54 (P54): re-verify tools/verify.py after switching run_pytest() from python -m pytest to uv run --with pytest pytest, confirming recorded totals match the bare-pytest-equivalent ground truth (433 passed, 0 failed, 0 skipped, uv run --with pytest pytest -q, 316.39s)",
+      "totals": {
+        "passed": 433,
+        "failed": 0,
+        "skipped": 0,
+        "total": 433
+      },
+      "tests": {
+        "tests.test_audit::test_real_sma_is_causal": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_audit::test_real_rsi_is_causal": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_audit::test_real_obv_is_causal": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_audit::test_centered_rolling_mean_is_flagged": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_audit::test_shift_negative_is_flagged": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_audit::test_run_audit_clean_on_real_universe": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_audit::test_run_audit_reports_missing_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_burn_in_period_takes_the_slowest_indicator": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_walk_forward_scores_are_nan_inside_burn_in_and_bounded_after": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_walk_forward_score_matches_a_full_screen_on_the_same_slice": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_long_flat_returns_are_zero_when_score_never_clears_threshold": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_long_flat_returns_capture_the_next_bar_after_a_qualifying_score": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_holdings_from_scores_mirrors_long_flat_returns_shift": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_trading_cost_series_charges_both_legs_on_a_one_day_hold": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_trading_cost_series_splits_entry_and_exit_over_a_multi_day_hold": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_long_flat_returns_with_costs_never_beats_the_no_cost_version": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_cumulative_return_compounds": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_buy_and_hold_return_matches_manual_ratio": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_buy_and_hold_return_is_zero_for_a_too_short_window": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_buy_and_hold_return_with_costs_is_worse_than_the_no_cost_version": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_buy_and_hold_return_with_costs_matches_manual_round_trip": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_buy_and_hold_return_with_costs_is_zero_for_a_too_short_window": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_backtest_ticker_shape": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_backtest_ticker_raises_when_history_is_too_short": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_run_backtest_records_a_fetch_error_without_failing_the_run": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_run_backtest_summary_matches_results": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_run_backtest_honors_the_slippage_bps_argument": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_write_json_round_trips_the_report": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_write_csv_has_one_row_per_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_write_markdown_reports_beats_and_caveats": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_write_markdown_handles_no_results": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_main_runs_offline_against_the_real_fixtures_and_writes_all_three_files": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_main_accepts_a_custom_slippage_bps": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_main_rejects_live_and_offline_together": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_backtest::test_main_empty_universe_is_a_clean_failure": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_charts::test_rebase_to_100_starts_at_100": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_charts::test_rebase_to_100_rejects_empty_frame": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_charts::test_rebase_to_100_on_gulfoillub_fixture_starts_at_100": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_charts::test_rebase_to_100_gandhar_starts_later_than_gulfoillub": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_charts::test_drawdown_from_peak_is_zero_at_a_new_high": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_charts::test_drawdown_from_peak_never_positive": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_charts::test_drawdown_from_peak_rejects_empty_frame": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_charts::test_rolling_volatility_drops_rows_before_a_full_window": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_charts::test_rolling_volatility_rejects_too_small_window": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_charts::test_rolling_volatility_is_nonnegative_on_gulfoillub_fixture": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_charts::test_plot_rebased_comparison_writes_a_png": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_charts::test_plot_rebased_comparison_requires_subject_in_frames": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_charts::test_plot_drawdown_writes_a_png": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_charts::test_plot_rolling_volatility_writes_a_png": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_sustained_uptrend_with_rising_volume_classifies_bullish_on_every_factor": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_sustained_downtrend_with_falling_volume_classifies_bearish_on_every_factor": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_zero_drift_zigzag_classifies_as_genuinely_neutral": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_uptrend_on_fading_volume_is_bullish_but_less_than_confirmed_uptrend": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_trend_score_is_a_graded_response_not_a_step_function": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_changing_weights_flips_which_of_two_opposed_candidates_ranks_first": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_combined_score_and_liquidity_gates_keep_only_the_one_ticker_that_clears_both": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_each_dropped_ticker_was_excluded_for_its_own_documented_reason": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_liquidity_gate_boundary_is_inclusive": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_classification_and_filtering::test_tightening_the_score_gate_monotonically_shrinks_the_survivor_set": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_factor_gate::test_load_contract_reads_the_real_fama_french_fixture": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_factor_gate::test_load_contract_rejects_a_factor_block_missing_keys": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_factor_gate::test_load_contract_rejects_a_file_with_no_factor_block": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_factor_gate::test_apply_factor_gate_attaches_the_block_to_the_matching_ticker_only": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_factor_gate::test_apply_factor_gate_matches_without_the_ns_suffix": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_factor_gate::test_apply_factor_gate_leaves_every_candidate_unchanged_when_ticker_is_outside_the_universe": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_factor_gate::test_apply_factor_gate_does_not_mutate_the_input_screen": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_factor_gate::test_main_writes_the_gated_screen_when_the_ticker_matches": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_factor_gate::test_main_against_the_real_reliance_fixture_reports_a_genuine_match": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_factor_gate::test_main_defaults_out_to_overwriting_the_screen_in_place": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_factor_gate::test_significance_label_renders_words_not_booleans": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_factor_gate::test_method_label_flags_reliance_as_old_method": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_factor_gate::test_method_label_matches_without_the_ns_suffix": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_factor_gate::test_method_label_is_none_for_the_new_iima_method": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_fundamentals_gate::test_load_contract_reads_the_real_three_statement_model_fixture": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_fundamentals_gate::test_load_contract_rejects_a_fundamentals_block_missing_keys": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_fundamentals_gate::test_load_contract_rejects_a_file_with_no_fundamentals_block": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_fundamentals_gate::test_apply_fundamentals_gate_attaches_the_block_to_the_matching_ticker_only": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_fundamentals_gate::test_apply_fundamentals_gate_matches_without_the_ns_suffix": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_fundamentals_gate::test_apply_fundamentals_gate_leaves_every_candidate_unchanged_when_ticker_is_outside_the_universe": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_fundamentals_gate::test_apply_fundamentals_gate_does_not_mutate_the_input_screen": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_fundamentals_gate::test_main_writes_the_gated_screen_when_the_ticker_matches": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_fundamentals_gate::test_main_against_the_real_gulfoillub_fixture_reports_no_match_honestly": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_fundamentals_gate::test_main_defaults_out_to_overwriting_the_screen_in_place": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_volume_at_price_rejects_non_positive_bins": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_volume_at_price_rejects_empty_frame": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_volume_at_price_has_one_row_per_bin": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_volume_at_price_conserves_total_volume": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_volume_at_price_bins_span_the_close_range": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_volume_at_price_flat_price_series_is_one_degenerate_bin": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_volume_at_price_puts_each_days_volume_in_its_own_bin": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_volume_at_price_monotonic_series_bins_are_ascending_in_price": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_high_activity_zones_rejects_non_positive_threshold": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_high_activity_zones_empty_when_no_volume": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_high_activity_zones_flags_a_spike_bin": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_high_activity_zones_flags_nothing_when_volume_is_uniform": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_plot_liquidity_heatmap_writes_a_png": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_liquidity::test_plot_liquidity_heatmap_runs_with_no_high_activity_zones": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_resolve_risk_lab_root_prefers_explicit_override": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_resolve_risk_lab_root_reads_env_var": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_resolve_risk_lab_root_defaults_to_the_sibling_checkout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_risk_contract_reports_a_missing_sibling_checkout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_risk_contract_reports_a_checkout_without_mcsim": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_risk_contract_reports_uv_missing": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_risk_contract_succeeds_when_the_contract_file_lands": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_risk_contract_reports_failure_when_no_file_is_written": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_risk_contract_reports_a_timeout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_resolve_factor_model_root_prefers_explicit_override": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_resolve_factor_model_root_reads_env_var": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_resolve_factor_model_root_defaults_to_the_sibling_checkout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_factor_contract_reports_a_missing_sibling_checkout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_factor_contract_reports_a_checkout_without_factors_stock": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_factor_contract_reports_uv_missing": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_factor_contract_succeeds_when_the_contract_file_lands": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_factor_contract_reports_failure_when_no_file_is_written": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_factor_contract_reports_a_timeout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_resolve_reverse_dcf_root_prefers_explicit_override": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_resolve_reverse_dcf_root_reads_env_var": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_resolve_reverse_dcf_root_defaults_to_the_sibling_checkout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_valuation_contract_reports_a_missing_sibling_checkout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_valuation_contract_reports_a_checkout_without_reverse_dcf": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_valuation_contract_reports_uv_missing": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_valuation_contract_succeeds_when_the_contract_file_lands": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_valuation_contract_reports_failure_when_no_file_is_written": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_valuation_contract_reports_a_timeout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_resolve_iv_surface_root_prefers_explicit_override": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_resolve_iv_surface_root_reads_env_var": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_resolve_iv_surface_root_defaults_to_the_sibling_checkout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_raw_capture_exists_is_false_with_no_directory": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_raw_capture_exists_is_true_once_a_capture_file_is_committed": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_vol_contract_reports_a_missing_sibling_checkout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_vol_contract_reports_a_checkout_without_volsurface": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_vol_contract_reports_no_captured_chain_before_touching_uv_or_subprocess": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_vol_contract_reports_uv_missing": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_vol_contract_succeeds_when_the_contract_file_lands": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_vol_contract_reports_failure_when_no_file_is_written": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_vol_contract_reports_a_timeout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_resolve_sentiment_root_prefers_explicit_override": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_resolve_sentiment_root_reads_env_var": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_resolve_sentiment_root_defaults_to_the_sibling_checkout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_sentiment_contract_reports_a_missing_sibling_checkout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_sentiment_contract_reports_a_checkout_without_sentiment": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_sentiment_contract_reports_uv_missing": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_sentiment_contract_passes_the_yfinance_suffixed_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_sentiment_contract_reports_failure_when_no_file_is_written": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_contracts::test_generate_sentiment_contract_reports_a_timeout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_factor_contract_smoke::test_build_live_factor_section_against_the_real_sibling_checkout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_provider_smoke::test_yfinance_provider_gives_real_live_values_or_fails_cleanly": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_provider_smoke::test_yfinance_provider_never_leaks_a_raw_exception": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_risk_contract_smoke::test_build_live_risk_section_against_the_real_sibling_checkout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_sentiment_contract_smoke::test_build_live_sentiment_section_against_the_real_sibling_checkout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_valuation_contract_smoke::test_build_live_valuation_section_against_the_real_sibling_checkout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_live_vol_contract_smoke::test_build_live_vol_section_against_the_real_sibling_checkout": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_rsi_rejects_non_positive_period": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_rsi_leading_values_are_nan_then_bounded": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_rsi_is_100_for_a_strictly_rising_series": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_rsi_is_0_for_a_strictly_falling_series": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_rsi_is_50_for_a_flat_series": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_macd_rejects_fast_not_less_than_slow": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_macd_shape_and_columns": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_macd_histogram_equals_macd_minus_signal": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_macd_line_matches_ema_difference": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_macd_is_zero_for_a_flat_series": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_rsi_matches_textbook_wilder_in_the_opening_window": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_momentum_score_is_bounded_and_finite": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_momentum_score_positive_for_a_strictly_rising_series": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_momentum_score_negative_for_a_strictly_falling_series": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_momentum_score_zero_for_a_flat_series": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_momentum::test_momentum_score_too_short_for_either_indicator_is_zero": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_package::test_version_is_set": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_package::test_package_docstring_does_not_overclaim_screen_scope": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_package::test_schema_is_valid_json_and_versioned": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_package::test_fixtures_are_present_and_non_empty": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_fixture_provider_lists_committed_tickers": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_fixture_fetch_returns_the_shared_shape": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_unknown_fixture_names_the_alternatives": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_missing_column_fails_loudly": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_empty_frame_is_an_error_not_an_empty_result": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_normalise_drops_a_row_with_any_nan_field_not_just_all_nan": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_normalise_raises_if_every_row_is_partial": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_multiindex_columns_are_flattened": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers.TestAlphaVantageNotices::test_quota_message_raises_rate_limited": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers.TestAlphaVantageNotices::test_key_message_raises_bad_credentials": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers.TestAlphaVantageNotices::test_error_message_field_is_credentials": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers.TestAlphaVantageNotices::test_clean_payload_passes": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_missing_key_points_at_the_offline_path": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_load_defaults_to_fixtures": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_load_reuses_a_same_day_cache_without_refetching": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_load_refetches_once_the_cache_is_from_an_earlier_day": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_use_cache_false_always_refetches_live": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_local_csv_path_refetches_a_stale_cache_too": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_get_provider_rejects_unknown_names": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_local_csv_path_for_fixtures_points_at_the_committed_file": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_providers::test_local_csv_path_raises_provider_error_for_unknown_fixture": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_render_screen_table_lists_every_candidate": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_render_screen_table_handles_no_candidates": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_render_screen_table_adds_valuation_columns_only_when_a_candidate_has_them": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_render_screen_table_adds_risk_columns_only_when_a_candidate_has_them": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_render_screen_table_adds_vol_columns_only_when_a_candidate_has_them": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_render_screen_table_adds_sentiment_columns_only_when_a_candidate_has_them": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_render_screen_table_adds_fundamentals_columns_only_when_a_candidate_has_them": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_render_backtest_table_lists_every_result": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_write_charts_draws_one_heatmap_per_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_write_charts_records_a_bad_ticker_instead_of_raising": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_runs_offline_and_writes_charts": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_no_charts_skips_chart_files": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_rejects_live_and_offline_together": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_empty_universe_is_a_clean_failure": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_requires_both_valuation_flags_together": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_applies_the_real_gulfoillub_valuation_contract_and_reports_no_match": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_attaches_valuation_when_the_ticker_matches_the_universe": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_requires_both_risk_flags_together": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_applies_the_real_reliance_risk_contract_and_reports_a_match": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_requires_both_factor_flags_together": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_applies_the_real_reliance_factor_contract_and_reports_a_match": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_requires_both_sizing_flags_together": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_applies_the_real_reliance_sizing_contract_and_reports_a_match": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_requires_both_vol_flags_together": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_applies_the_real_reliance_vol_contract_and_reports_a_match": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_requires_both_sentiment_flags_together": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_applies_the_real_infy_sentiment_contract_and_reports_no_match": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_attaches_sentiment_when_the_ticker_matches_the_universe": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_requires_both_fundamentals_flags_together": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_applies_the_real_gulfoillub_fundamentals_contract_and_reports_no_match": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_report::test_main_attaches_fundamentals_when_the_ticker_matches_the_universe": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_load_contract_reads_the_real_monte_carlo_risk_lab_fixture": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_load_contract_still_accepts_a_v03_shaped_block_with_no_day6_keys": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_load_contract_rejects_a_risk_block_missing_keys": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_load_contract_rejects_a_file_with_no_risk_block": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_apply_risk_gate_attaches_the_block_to_the_matching_ticker_only": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_apply_risk_gate_matches_without_the_ns_suffix": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_apply_risk_gate_leaves_every_candidate_unchanged_when_ticker_is_outside_the_universe": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_apply_risk_gate_does_not_mutate_the_input_screen": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_main_writes_the_gated_screen_when_the_ticker_matches": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_main_against_the_real_reliance_fixture_reports_a_genuine_match": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_main_defaults_out_to_overwriting_the_screen_in_place": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_kupiec_note_cites_the_real_rejection_for_reliance_and_gulfoillub": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_kupiec_note_matches_without_the_ns_suffix": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_kupiec_note_is_none_for_an_unlisted_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_kupiec_note_computes_the_verdict_from_the_real_contract_once_it_carries_kupiec_99": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_kupiec_note_computes_the_double_rejection_for_gulfoillub": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_kupiec_note_falls_back_to_the_static_table_for_a_v03_shaped_contract": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_risk_gate::test_kupiec_note_fallback_ignores_an_unrelated_risk_payload_without_kupiec_99": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_to_yf_ticker_adds_suffix_once": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_trailing_return_matches_manual_close_ratio": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_trailing_return_is_none_below_window": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_trailing_volatility_is_nonnegative": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_trailing_volatility_is_none_below_window": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_subject_section_reuses_screener_scoring": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_peer_table_covers_subject_and_every_peer": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_peer_table_records_fetch_errors_without_raising": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_render_subject_table_includes_ticker_and_score": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_render_peer_table_shows_na_for_missing_stats": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_write_tearsheet_contains_subject_and_peers": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_cli_end_to_end_writes_tearsheet": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_cli_rejects_live_and_offline_together": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_cli_refresh_flag_threads_use_cache_false_through[--refresh]": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_cli_refresh_flag_threads_use_cache_false_through[--no-cache]": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_cli_without_refresh_defaults_to_use_cache_true": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_cli_reports_missing_ticker_without_traceback": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_contract_namespaces_excludes_sizing_on_purpose": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_section_reads_real_fixture_for_subject": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_section_reports_missing_fixture_with_reason": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_section_vol_for_subject_is_no_listed_options_not_unverified": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_section_vol_no_listed_options_applies_to_any_non_fo_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_load_fo_underlyings_contains_known_fo_names_not_the_lubricant_peers": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_fo_mktlots_list_date_reads_the_committed_metadata": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_section_reads_real_fixture_for_subject_sentiment": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_section_reads_real_fixture_for_subject_risk": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_section_reads_real_fixture_for_subject_factor": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_section_reports_malformed_fixture_with_reason": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_sections_covers_every_namespace_for_subject": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_render_contract_section_available_shows_fields": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_render_contract_section_unavailable_is_a_one_line_reason": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_contract_sections_markdown_never_shows_sizing": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_contract_sections_markdown_notes_the_kupiec_gap_for_gulfoillub_risk": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_contract_sections_markdown_labels_reliance_factor_as_old_method": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_contract_sections_markdown_renders_significance_as_words": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_cli_end_to_end_includes_contract_sections": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_cli_end_to_end_prints_sizing_exclusion_and_risk_caveat_to_console": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_write_charts_writes_three_pngs": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_write_charts_records_peer_fetch_errors_without_raising": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_write_charts_returns_nothing_when_subject_itself_fails": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_write_tearsheet_lists_chart_files": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_cli_end_to_end_writes_charts_by_default": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_cli_no_charts_skips_png_output": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_subject_section_works_for_a_ticker_outside_the_lubricant_sector": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_cli_builds_a_full_tearsheet_for_a_non_lubricant_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_vol_reason_distinguishes_no_listed_options_from_no_contract_yet": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_peer_table_dedupes_a_subject_that_is_also_a_default_peer": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_peer_table_dedup_is_case_insensitive": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_risk_section_returns_none_when_price_data_is_missing": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_risk_section_accepts_a_plain_string_root": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_risk_section_returns_none_on_generation_failure": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_risk_section_builds_an_available_section": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_sections_never_regenerates_a_committed_risk_fixture": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_sections_falls_back_to_live_generation_for_an_uncommitted_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_sections_keeps_not_available_when_live_generation_also_fails": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_cli_end_to_end_generates_a_live_risk_section_for_an_uncommitted_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_factor_section_returns_none_when_price_data_is_missing": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_factor_section_accepts_a_plain_string_root": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_factor_section_returns_none_on_generation_failure": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_factor_section_builds_an_available_section": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_sections_never_regenerates_a_committed_factor_fixture": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_sections_falls_back_to_live_factor_generation_for_an_uncommitted_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_sections_keeps_not_available_when_live_factor_generation_also_fails": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_cli_end_to_end_generates_a_live_factor_section_for_an_uncommitted_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_valuation_section_returns_none_when_price_data_is_missing": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_valuation_section_accepts_a_plain_string_root": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_valuation_section_returns_none_on_generation_failure": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_valuation_section_builds_an_available_section": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_sections_never_regenerates_a_committed_valuation_fixture": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_sections_falls_back_to_live_valuation_generation_for_an_uncommitted_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_sections_keeps_not_available_when_live_valuation_generation_also_fails": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_cli_end_to_end_generates_a_live_valuation_section_for_an_uncommitted_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_vol_no_capture_reason_names_the_ticker_and_the_sibling": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_vol_section_returns_none_on_generation_failure": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_vol_section_accepts_a_plain_string_root": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_vol_section_builds_an_available_section": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_sections_never_regenerates_a_committed_vol_fixture": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_sections_never_attempts_live_vol_for_a_non_fo_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_sections_falls_back_to_live_vol_generation_for_an_fo_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_sections_reports_no_captured_chain_when_live_vol_generation_fails": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_cli_end_to_end_generates_a_live_vol_section_for_an_fo_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_sentiment_section_returns_none_on_generation_failure": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_sentiment_section_accepts_a_plain_string_root": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_live_sentiment_section_builds_an_available_section_with_honest_zero": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_sections_never_regenerates_a_committed_sentiment_fixture": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_sections_falls_back_to_live_sentiment_generation_for_an_uncommitted_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_build_contract_sections_keeps_not_available_when_live_sentiment_generation_also_fails": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_cli_end_to_end_generates_a_live_sentiment_section_for_an_uncommitted_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_contract_section_note_names_fundamentals_scope_unconditionally": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_run::test_cli_prints_the_fundamentals_scope_note_for_any_ticker": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_load_config_reads_the_committed_rules_file": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_load_config_fills_missing_sections_from_defaults": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_load_config_fills_missing_keys_within_a_present_section": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_load_universe_skips_blanks_and_comments": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_load_universe_missing_file_is_empty": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_compute_signals_bounded": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_blended_score_all_positive_signals_is_one": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_blended_score_all_negative_signals_is_zero": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_blended_score_neutral_signals_is_a_half": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_blended_score_weights_need_not_sum_to_one": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_blended_score_falls_back_to_equal_weight_when_weights_are_all_zero": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_liquidity_metrics_matches_manual_mean": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_apply_filters_drops_below_min_turnover": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_apply_filters_gates_on_turnover_not_raw_share_volume": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_apply_filters_drops_below_min_score": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_rank_orders_by_score_descending_and_stamps_rank": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_build_screen_ranks_the_real_universe": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_build_screen_records_a_fetch_error_without_failing_the_run": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_write_json_round_trips_the_screen": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_write_csv_has_one_row_per_candidate": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_write_markdown_reports_errors_and_empty_screens": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_main_runs_offline_against_the_real_fixtures_and_writes_all_three_files": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_main_rejects_live_and_offline_together": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_screener::test_main_empty_universe_is_a_clean_failure": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sentiment_gate::test_load_contract_reads_the_real_headline_sentiment_fixture": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sentiment_gate::test_load_contract_rejects_a_sentiment_block_missing_keys": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sentiment_gate::test_load_contract_rejects_a_file_with_no_sentiment_block": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sentiment_gate::test_load_contract_accepts_a_null_score_7d": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sentiment_gate::test_apply_sentiment_gate_attaches_the_block_to_the_matching_ticker_only": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sentiment_gate::test_apply_sentiment_gate_matches_without_the_ns_suffix": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sentiment_gate::test_apply_sentiment_gate_leaves_every_candidate_unchanged_when_ticker_is_outside_the_universe": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sentiment_gate::test_apply_sentiment_gate_does_not_mutate_the_input_screen": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sentiment_gate::test_main_writes_the_gated_screen_when_the_ticker_matches": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sentiment_gate::test_main_against_the_real_infy_fixture_reports_no_match_honestly": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sentiment_gate::test_main_defaults_out_to_overwriting_the_screen_in_place": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sentiment_gate::test_load_contract_accepts_a_present_but_null_score_7d": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sentiment_gate::test_main_against_the_real_fortis_fixture_reports_no_match_honestly": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sizing_gate::test_load_contract_reads_the_real_markowitz_fixture": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sizing_gate::test_load_contract_rejects_a_sizing_block_missing_keys": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sizing_gate::test_load_contract_rejects_a_file_with_no_sizing_block": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sizing_gate::test_apply_sizing_gate_attaches_the_block_to_the_matching_ticker_only": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sizing_gate::test_apply_sizing_gate_matches_without_the_ns_suffix": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sizing_gate::test_apply_sizing_gate_leaves_every_candidate_unchanged_when_ticker_is_outside_the_universe": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sizing_gate::test_apply_sizing_gate_does_not_mutate_the_input_screen": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sizing_gate::test_main_writes_the_gated_screen_when_the_ticker_matches": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sizing_gate::test_main_against_the_real_reliance_fixture_reports_a_genuine_match": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_sizing_gate::test_main_defaults_out_to_overwriting_the_screen_in_place": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_sma_matches_pandas_rolling_mean": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_sma_window_one_equals_close": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_sma_rejects_non_positive_window": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_sma_leading_values_are_nan_then_defined": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_ema_matches_pandas_ewm": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_ema_rejects_non_positive_span": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_crossover_state_signs_and_undefined_rows": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_crossover_events_fire_only_on_the_flip_bar": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_crossover_events_needs_two_defined_bars": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_sma_crossover_rejects_fast_not_less_than_slow": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_ema_crossover_rejects_fast_not_less_than_slow": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_sma_crossover_detects_a_known_golden_cross": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_sma_crossover_detects_a_known_death_cross": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_trend_score_is_bounded_and_finite": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_trend_score_ema_also_bounded": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_trend_score_rejects_unknown_method": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_trend_score_positive_when_price_ramping_up": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_trend_score_negative_when_price_ramping_down": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_trend::test_trend_score_flat_price_is_zero": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_valuation_gate::test_load_contract_reads_the_real_reverse_dcf_engine_fixture": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_valuation_gate::test_load_contract_rejects_a_valuation_block_missing_keys": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_valuation_gate::test_load_contract_rejects_a_file_with_no_valuation_block": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_valuation_gate::test_apply_valuation_gate_attaches_the_block_to_the_matching_ticker_only": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_valuation_gate::test_apply_valuation_gate_matches_without_the_ns_suffix": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_valuation_gate::test_apply_valuation_gate_leaves_every_candidate_unchanged_when_ticker_is_outside_the_universe": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_valuation_gate::test_apply_valuation_gate_does_not_mutate_the_input_screen": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_valuation_gate::test_main_writes_the_gated_screen_when_the_ticker_matches": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_valuation_gate::test_main_against_the_real_gulfoillub_fixture_reports_no_match_honestly": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_valuation_gate::test_main_defaults_out_to_overwriting_the_screen_in_place": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_vol_gate::test_load_contract_reads_the_real_implied_vol_surface_fixture": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_vol_gate::test_load_contract_rejects_a_vol_block_missing_keys": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_vol_gate::test_load_contract_rejects_a_file_with_no_vol_block": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_vol_gate::test_load_contract_accepts_a_present_but_null_iv_rank_1y": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_vol_gate::test_apply_vol_gate_attaches_the_block_to_the_matching_ticker_only": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_vol_gate::test_apply_vol_gate_matches_without_the_ns_suffix": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_vol_gate::test_apply_vol_gate_leaves_every_candidate_unchanged_when_ticker_is_outside_the_universe": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_vol_gate::test_apply_vol_gate_does_not_mutate_the_input_screen": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_vol_gate::test_main_writes_the_gated_screen_when_the_ticker_matches": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_vol_gate::test_main_against_the_real_reliance_fixture_reports_a_genuine_match": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_vol_gate::test_main_defaults_out_to_overwriting_the_screen_in_place": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_obv_starts_at_zero_with_no_prior_close": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_obv_length_matches_input": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_obv_adds_volume_on_up_days_and_subtracts_on_down_days": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_zscore_rejects_small_window": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_zscore_leading_values_are_nan_then_defined": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_zscore_is_zero_for_constant_volume": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_zscore_flags_a_spike": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_zscore_matches_manual_calculation": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_score_is_bounded_and_finite": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_score_positive_when_price_rises_on_uniform_volume": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_score_negative_when_price_falls_on_uniform_volume": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_score_positive_for_a_volume_spike_on_flat_price": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_score_zero_for_flat_price_and_flat_volume": {
+          "outcome": "passed",
+          "detail": null
+        },
+        "tests.test_volume::test_volume_score_ignores_obv_component_when_window_exceeds_series_length": {
+          "outcome": "passed",
+          "detail": null
+        }
+      },
+      "new_test_ids": [
+        "tests.test_backtest::test_buy_and_hold_return_with_costs_is_worse_than_the_no_cost_version",
+        "tests.test_backtest::test_buy_and_hold_return_with_costs_is_zero_for_a_too_short_window",
+        "tests.test_backtest::test_buy_and_hold_return_with_costs_matches_manual_round_trip",
+        "tests.test_backtest::test_holdings_from_scores_mirrors_long_flat_returns_shift",
+        "tests.test_backtest::test_long_flat_returns_with_costs_never_beats_the_no_cost_version",
+        "tests.test_backtest::test_main_accepts_a_custom_slippage_bps",
+        "tests.test_backtest::test_run_backtest_honors_the_slippage_bps_argument",
+        "tests.test_backtest::test_trading_cost_series_charges_both_legs_on_a_one_day_hold",
+        "tests.test_backtest::test_trading_cost_series_splits_entry_and_exit_over_a_multi_day_hold",
+        "tests.test_charts::test_drawdown_from_peak_is_zero_at_a_new_high",
+        "tests.test_charts::test_drawdown_from_peak_never_positive",
+        "tests.test_charts::test_drawdown_from_peak_rejects_empty_frame",
+        "tests.test_charts::test_plot_drawdown_writes_a_png",
+        "tests.test_charts::test_plot_rebased_comparison_requires_subject_in_frames",
+        "tests.test_charts::test_plot_rebased_comparison_writes_a_png",
+        "tests.test_charts::test_plot_rolling_volatility_writes_a_png",
+        "tests.test_charts::test_rebase_to_100_gandhar_starts_later_than_gulfoillub",
+        "tests.test_charts::test_rebase_to_100_on_gulfoillub_fixture_starts_at_100",
+        "tests.test_charts::test_rebase_to_100_rejects_empty_frame",
+        "tests.test_charts::test_rebase_to_100_starts_at_100",
+        "tests.test_charts::test_rolling_volatility_drops_rows_before_a_full_window",
+        "tests.test_charts::test_rolling_volatility_is_nonnegative_on_gulfoillub_fixture",
+        "tests.test_charts::test_rolling_volatility_rejects_too_small_window",
+        "tests.test_factor_gate::test_apply_factor_gate_attaches_the_block_to_the_matching_ticker_only",
+        "tests.test_factor_gate::test_apply_factor_gate_does_not_mutate_the_input_screen",
+        "tests.test_factor_gate::test_apply_factor_gate_leaves_every_candidate_unchanged_when_ticker_is_outside_the_universe",
+        "tests.test_factor_gate::test_apply_factor_gate_matches_without_the_ns_suffix",
+        "tests.test_factor_gate::test_load_contract_reads_the_real_fama_french_fixture",
+        "tests.test_factor_gate::test_load_contract_rejects_a_factor_block_missing_keys",
+        "tests.test_factor_gate::test_load_contract_rejects_a_file_with_no_factor_block",
+        "tests.test_factor_gate::test_main_against_the_real_reliance_fixture_reports_a_genuine_match",
+        "tests.test_factor_gate::test_main_defaults_out_to_overwriting_the_screen_in_place",
+        "tests.test_factor_gate::test_main_writes_the_gated_screen_when_the_ticker_matches",
+        "tests.test_factor_gate::test_method_label_flags_reliance_as_old_method",
+        "tests.test_factor_gate::test_method_label_is_none_for_the_new_iima_method",
+        "tests.test_factor_gate::test_method_label_matches_without_the_ns_suffix",
+        "tests.test_factor_gate::test_significance_label_renders_words_not_booleans",
+        "tests.test_fundamentals_gate::test_apply_fundamentals_gate_attaches_the_block_to_the_matching_ticker_only",
+        "tests.test_fundamentals_gate::test_apply_fundamentals_gate_does_not_mutate_the_input_screen",
+        "tests.test_fundamentals_gate::test_apply_fundamentals_gate_leaves_every_candidate_unchanged_when_ticker_is_outside_the_universe",
+        "tests.test_fundamentals_gate::test_apply_fundamentals_gate_matches_without_the_ns_suffix",
+        "tests.test_fundamentals_gate::test_load_contract_reads_the_real_three_statement_model_fixture",
+        "tests.test_fundamentals_gate::test_load_contract_rejects_a_file_with_no_fundamentals_block",
+        "tests.test_fundamentals_gate::test_load_contract_rejects_a_fundamentals_block_missing_keys",
+        "tests.test_fundamentals_gate::test_main_against_the_real_gulfoillub_fixture_reports_no_match_honestly",
+        "tests.test_fundamentals_gate::test_main_defaults_out_to_overwriting_the_screen_in_place",
+        "tests.test_fundamentals_gate::test_main_writes_the_gated_screen_when_the_ticker_matches",
+        "tests.test_live_contracts::test_generate_factor_contract_reports_a_checkout_without_factors_stock",
+        "tests.test_live_contracts::test_generate_factor_contract_reports_a_missing_sibling_checkout",
+        "tests.test_live_contracts::test_generate_factor_contract_reports_a_timeout",
+        "tests.test_live_contracts::test_generate_factor_contract_reports_failure_when_no_file_is_written",
+        "tests.test_live_contracts::test_generate_factor_contract_reports_uv_missing",
+        "tests.test_live_contracts::test_generate_factor_contract_succeeds_when_the_contract_file_lands",
+        "tests.test_live_contracts::test_generate_risk_contract_reports_a_checkout_without_mcsim",
+        "tests.test_live_contracts::test_generate_risk_contract_reports_a_missing_sibling_checkout",
+        "tests.test_live_contracts::test_generate_risk_contract_reports_a_timeout",
+        "tests.test_live_contracts::test_generate_risk_contract_reports_failure_when_no_file_is_written",
+        "tests.test_live_contracts::test_generate_risk_contract_reports_uv_missing",
+        "tests.test_live_contracts::test_generate_risk_contract_succeeds_when_the_contract_file_lands",
+        "tests.test_live_contracts::test_generate_sentiment_contract_passes_the_yfinance_suffixed_ticker",
+        "tests.test_live_contracts::test_generate_sentiment_contract_reports_a_checkout_without_sentiment",
+        "tests.test_live_contracts::test_generate_sentiment_contract_reports_a_missing_sibling_checkout",
+        "tests.test_live_contracts::test_generate_sentiment_contract_reports_a_timeout",
+        "tests.test_live_contracts::test_generate_sentiment_contract_reports_failure_when_no_file_is_written",
+        "tests.test_live_contracts::test_generate_sentiment_contract_reports_uv_missing",
+        "tests.test_live_contracts::test_generate_valuation_contract_reports_a_checkout_without_reverse_dcf",
+        "tests.test_live_contracts::test_generate_valuation_contract_reports_a_missing_sibling_checkout",
+        "tests.test_live_contracts::test_generate_valuation_contract_reports_a_timeout",
+        "tests.test_live_contracts::test_generate_valuation_contract_reports_failure_when_no_file_is_written",
+        "tests.test_live_contracts::test_generate_valuation_contract_reports_uv_missing",
+        "tests.test_live_contracts::test_generate_valuation_contract_succeeds_when_the_contract_file_lands",
+        "tests.test_live_contracts::test_generate_vol_contract_reports_a_checkout_without_volsurface",
+        "tests.test_live_contracts::test_generate_vol_contract_reports_a_missing_sibling_checkout",
+        "tests.test_live_contracts::test_generate_vol_contract_reports_a_timeout",
+        "tests.test_live_contracts::test_generate_vol_contract_reports_failure_when_no_file_is_written",
+        "tests.test_live_contracts::test_generate_vol_contract_reports_no_captured_chain_before_touching_uv_or_subprocess",
+        "tests.test_live_contracts::test_generate_vol_contract_reports_uv_missing",
+        "tests.test_live_contracts::test_generate_vol_contract_succeeds_when_the_contract_file_lands",
+        "tests.test_live_contracts::test_raw_capture_exists_is_false_with_no_directory",
+        "tests.test_live_contracts::test_raw_capture_exists_is_true_once_a_capture_file_is_committed",
+        "tests.test_live_contracts::test_resolve_factor_model_root_defaults_to_the_sibling_checkout",
+        "tests.test_live_contracts::test_resolve_factor_model_root_prefers_explicit_override",
+        "tests.test_live_contracts::test_resolve_factor_model_root_reads_env_var",
+        "tests.test_live_contracts::test_resolve_iv_surface_root_defaults_to_the_sibling_checkout",
+        "tests.test_live_contracts::test_resolve_iv_surface_root_prefers_explicit_override",
+        "tests.test_live_contracts::test_resolve_iv_surface_root_reads_env_var",
+        "tests.test_live_contracts::test_resolve_reverse_dcf_root_defaults_to_the_sibling_checkout",
+        "tests.test_live_contracts::test_resolve_reverse_dcf_root_prefers_explicit_override",
+        "tests.test_live_contracts::test_resolve_reverse_dcf_root_reads_env_var",
+        "tests.test_live_contracts::test_resolve_risk_lab_root_defaults_to_the_sibling_checkout",
+        "tests.test_live_contracts::test_resolve_risk_lab_root_prefers_explicit_override",
+        "tests.test_live_contracts::test_resolve_risk_lab_root_reads_env_var",
+        "tests.test_live_contracts::test_resolve_sentiment_root_defaults_to_the_sibling_checkout",
+        "tests.test_live_contracts::test_resolve_sentiment_root_prefers_explicit_override",
+        "tests.test_live_contracts::test_resolve_sentiment_root_reads_env_var",
+        "tests.test_live_factor_contract_smoke::test_build_live_factor_section_against_the_real_sibling_checkout",
+        "tests.test_live_risk_contract_smoke::test_build_live_risk_section_against_the_real_sibling_checkout",
+        "tests.test_live_sentiment_contract_smoke::test_build_live_sentiment_section_against_the_real_sibling_checkout",
+        "tests.test_live_valuation_contract_smoke::test_build_live_valuation_section_against_the_real_sibling_checkout",
+        "tests.test_live_vol_contract_smoke::test_build_live_vol_section_against_the_real_sibling_checkout",
+        "tests.test_package::test_package_docstring_does_not_overclaim_screen_scope",
+        "tests.test_providers::test_load_refetches_once_the_cache_is_from_an_earlier_day",
+        "tests.test_providers::test_load_reuses_a_same_day_cache_without_refetching",
+        "tests.test_providers::test_local_csv_path_for_fixtures_points_at_the_committed_file",
+        "tests.test_providers::test_local_csv_path_raises_provider_error_for_unknown_fixture",
+        "tests.test_providers::test_local_csv_path_refetches_a_stale_cache_too",
+        "tests.test_providers::test_normalise_drops_a_row_with_any_nan_field_not_just_all_nan",
+        "tests.test_providers::test_normalise_raises_if_every_row_is_partial",
+        "tests.test_providers::test_use_cache_false_always_refetches_live",
+        "tests.test_report::test_main_applies_the_real_gulfoillub_fundamentals_contract_and_reports_no_match",
+        "tests.test_report::test_main_applies_the_real_gulfoillub_valuation_contract_and_reports_no_match",
+        "tests.test_report::test_main_applies_the_real_infy_sentiment_contract_and_reports_no_match",
+        "tests.test_report::test_main_applies_the_real_reliance_factor_contract_and_reports_a_match",
+        "tests.test_report::test_main_applies_the_real_reliance_risk_contract_and_reports_a_match",
+        "tests.test_report::test_main_applies_the_real_reliance_sizing_contract_and_reports_a_match",
+        "tests.test_report::test_main_applies_the_real_reliance_vol_contract_and_reports_a_match",
+        "tests.test_report::test_main_attaches_fundamentals_when_the_ticker_matches_the_universe",
+        "tests.test_report::test_main_attaches_sentiment_when_the_ticker_matches_the_universe",
+        "tests.test_report::test_main_attaches_valuation_when_the_ticker_matches_the_universe",
+        "tests.test_report::test_main_requires_both_factor_flags_together",
+        "tests.test_report::test_main_requires_both_fundamentals_flags_together",
+        "tests.test_report::test_main_requires_both_risk_flags_together",
+        "tests.test_report::test_main_requires_both_sentiment_flags_together",
+        "tests.test_report::test_main_requires_both_sizing_flags_together",
+        "tests.test_report::test_main_requires_both_valuation_flags_together",
+        "tests.test_report::test_main_requires_both_vol_flags_together",
+        "tests.test_report::test_render_screen_table_adds_fundamentals_columns_only_when_a_candidate_has_them",
+        "tests.test_report::test_render_screen_table_adds_risk_columns_only_when_a_candidate_has_them",
+        "tests.test_report::test_render_screen_table_adds_sentiment_columns_only_when_a_candidate_has_them",
+        "tests.test_report::test_render_screen_table_adds_valuation_columns_only_when_a_candidate_has_them",
+        "tests.test_report::test_render_screen_table_adds_vol_columns_only_when_a_candidate_has_them",
+        "tests.test_risk_gate::test_apply_risk_gate_attaches_the_block_to_the_matching_ticker_only",
+        "tests.test_risk_gate::test_apply_risk_gate_does_not_mutate_the_input_screen",
+        "tests.test_risk_gate::test_apply_risk_gate_leaves_every_candidate_unchanged_when_ticker_is_outside_the_universe",
+        "tests.test_risk_gate::test_apply_risk_gate_matches_without_the_ns_suffix",
+        "tests.test_risk_gate::test_kupiec_note_cites_the_real_rejection_for_reliance_and_gulfoillub",
+        "tests.test_risk_gate::test_kupiec_note_computes_the_double_rejection_for_gulfoillub",
+        "tests.test_risk_gate::test_kupiec_note_computes_the_verdict_from_the_real_contract_once_it_carries_kupiec_99",
+        "tests.test_risk_gate::test_kupiec_note_fallback_ignores_an_unrelated_risk_payload_without_kupiec_99",
+        "tests.test_risk_gate::test_kupiec_note_falls_back_to_the_static_table_for_a_v03_shaped_contract",
+        "tests.test_risk_gate::test_kupiec_note_is_none_for_an_unlisted_ticker",
+        "tests.test_risk_gate::test_kupiec_note_matches_without_the_ns_suffix",
+        "tests.test_risk_gate::test_load_contract_reads_the_real_monte_carlo_risk_lab_fixture",
+        "tests.test_risk_gate::test_load_contract_rejects_a_file_with_no_risk_block",
+        "tests.test_risk_gate::test_load_contract_rejects_a_risk_block_missing_keys",
+        "tests.test_risk_gate::test_load_contract_still_accepts_a_v03_shaped_block_with_no_day6_keys",
+        "tests.test_risk_gate::test_main_against_the_real_reliance_fixture_reports_a_genuine_match",
+        "tests.test_risk_gate::test_main_defaults_out_to_overwriting_the_screen_in_place",
+        "tests.test_risk_gate::test_main_writes_the_gated_screen_when_the_ticker_matches",
+        "tests.test_run::test_build_contract_section_reads_real_fixture_for_subject",
+        "tests.test_run::test_build_contract_section_reads_real_fixture_for_subject_factor",
+        "tests.test_run::test_build_contract_section_reads_real_fixture_for_subject_risk",
+        "tests.test_run::test_build_contract_section_reads_real_fixture_for_subject_sentiment",
+        "tests.test_run::test_build_contract_section_reports_malformed_fixture_with_reason",
+        "tests.test_run::test_build_contract_section_reports_missing_fixture_with_reason",
+        "tests.test_run::test_build_contract_section_vol_for_subject_is_no_listed_options_not_unverified",
+        "tests.test_run::test_build_contract_section_vol_no_listed_options_applies_to_any_non_fo_ticker",
+        "tests.test_run::test_build_contract_sections_covers_every_namespace_for_subject",
+        "tests.test_run::test_build_contract_sections_falls_back_to_live_factor_generation_for_an_uncommitted_ticker",
+        "tests.test_run::test_build_contract_sections_falls_back_to_live_generation_for_an_uncommitted_ticker",
+        "tests.test_run::test_build_contract_sections_falls_back_to_live_sentiment_generation_for_an_uncommitted_ticker",
+        "tests.test_run::test_build_contract_sections_falls_back_to_live_valuation_generation_for_an_uncommitted_ticker",
+        "tests.test_run::test_build_contract_sections_falls_back_to_live_vol_generation_for_an_fo_ticker",
+        "tests.test_run::test_build_contract_sections_keeps_not_available_when_live_factor_generation_also_fails",
+        "tests.test_run::test_build_contract_sections_keeps_not_available_when_live_generation_also_fails",
+        "tests.test_run::test_build_contract_sections_keeps_not_available_when_live_sentiment_generation_also_fails",
+        "tests.test_run::test_build_contract_sections_keeps_not_available_when_live_valuation_generation_also_fails",
+        "tests.test_run::test_build_contract_sections_never_attempts_live_vol_for_a_non_fo_ticker",
+        "tests.test_run::test_build_contract_sections_never_regenerates_a_committed_factor_fixture",
+        "tests.test_run::test_build_contract_sections_never_regenerates_a_committed_risk_fixture",
+        "tests.test_run::test_build_contract_sections_never_regenerates_a_committed_sentiment_fixture",
+        "tests.test_run::test_build_contract_sections_never_regenerates_a_committed_valuation_fixture",
+        "tests.test_run::test_build_contract_sections_never_regenerates_a_committed_vol_fixture",
+        "tests.test_run::test_build_contract_sections_reports_no_captured_chain_when_live_vol_generation_fails",
+        "tests.test_run::test_build_live_factor_section_accepts_a_plain_string_root",
+        "tests.test_run::test_build_live_factor_section_builds_an_available_section",
+        "tests.test_run::test_build_live_factor_section_returns_none_on_generation_failure",
+        "tests.test_run::test_build_live_factor_section_returns_none_when_price_data_is_missing",
+        "tests.test_run::test_build_live_risk_section_accepts_a_plain_string_root",
+        "tests.test_run::test_build_live_risk_section_builds_an_available_section",
+        "tests.test_run::test_build_live_risk_section_returns_none_on_generation_failure",
+        "tests.test_run::test_build_live_risk_section_returns_none_when_price_data_is_missing",
+        "tests.test_run::test_build_live_sentiment_section_accepts_a_plain_string_root",
+        "tests.test_run::test_build_live_sentiment_section_builds_an_available_section_with_honest_zero",
+        "tests.test_run::test_build_live_sentiment_section_returns_none_on_generation_failure",
+        "tests.test_run::test_build_live_valuation_section_accepts_a_plain_string_root",
+        "tests.test_run::test_build_live_valuation_section_builds_an_available_section",
+        "tests.test_run::test_build_live_valuation_section_returns_none_on_generation_failure",
+        "tests.test_run::test_build_live_valuation_section_returns_none_when_price_data_is_missing",
+        "tests.test_run::test_build_live_vol_section_accepts_a_plain_string_root",
+        "tests.test_run::test_build_live_vol_section_builds_an_available_section",
+        "tests.test_run::test_build_live_vol_section_returns_none_on_generation_failure",
+        "tests.test_run::test_build_peer_table_covers_subject_and_every_peer",
+        "tests.test_run::test_build_peer_table_dedup_is_case_insensitive",
+        "tests.test_run::test_build_peer_table_dedupes_a_subject_that_is_also_a_default_peer",
+        "tests.test_run::test_build_peer_table_records_fetch_errors_without_raising",
+        "tests.test_run::test_build_subject_section_reuses_screener_scoring",
+        "tests.test_run::test_build_subject_section_works_for_a_ticker_outside_the_lubricant_sector",
+        "tests.test_run::test_cli_builds_a_full_tearsheet_for_a_non_lubricant_ticker",
+        "tests.test_run::test_cli_end_to_end_generates_a_live_factor_section_for_an_uncommitted_ticker",
+        "tests.test_run::test_cli_end_to_end_generates_a_live_risk_section_for_an_uncommitted_ticker",
+        "tests.test_run::test_cli_end_to_end_generates_a_live_sentiment_section_for_an_uncommitted_ticker",
+        "tests.test_run::test_cli_end_to_end_generates_a_live_valuation_section_for_an_uncommitted_ticker",
+        "tests.test_run::test_cli_end_to_end_generates_a_live_vol_section_for_an_fo_ticker",
+        "tests.test_run::test_cli_end_to_end_includes_contract_sections",
+        "tests.test_run::test_cli_end_to_end_prints_sizing_exclusion_and_risk_caveat_to_console",
+        "tests.test_run::test_cli_end_to_end_writes_charts_by_default",
+        "tests.test_run::test_cli_end_to_end_writes_tearsheet",
+        "tests.test_run::test_cli_no_charts_skips_png_output",
+        "tests.test_run::test_cli_prints_the_fundamentals_scope_note_for_any_ticker",
+        "tests.test_run::test_cli_refresh_flag_threads_use_cache_false_through[--no-cache]",
+        "tests.test_run::test_cli_refresh_flag_threads_use_cache_false_through[--refresh]",
+        "tests.test_run::test_cli_rejects_live_and_offline_together",
+        "tests.test_run::test_cli_reports_missing_ticker_without_traceback",
+        "tests.test_run::test_cli_without_refresh_defaults_to_use_cache_true",
+        "tests.test_run::test_contract_namespaces_excludes_sizing_on_purpose",
+        "tests.test_run::test_contract_section_note_names_fundamentals_scope_unconditionally",
+        "tests.test_run::test_contract_sections_markdown_labels_reliance_factor_as_old_method",
+        "tests.test_run::test_contract_sections_markdown_never_shows_sizing",
+        "tests.test_run::test_contract_sections_markdown_notes_the_kupiec_gap_for_gulfoillub_risk",
+        "tests.test_run::test_contract_sections_markdown_renders_significance_as_words",
+        "tests.test_run::test_fo_mktlots_list_date_reads_the_committed_metadata",
+        "tests.test_run::test_load_fo_underlyings_contains_known_fo_names_not_the_lubricant_peers",
+        "tests.test_run::test_render_contract_section_available_shows_fields",
+        "tests.test_run::test_render_contract_section_unavailable_is_a_one_line_reason",
+        "tests.test_run::test_render_peer_table_shows_na_for_missing_stats",
+        "tests.test_run::test_render_subject_table_includes_ticker_and_score",
+        "tests.test_run::test_to_yf_ticker_adds_suffix_once",
+        "tests.test_run::test_trailing_return_is_none_below_window",
+        "tests.test_run::test_trailing_return_matches_manual_close_ratio",
+        "tests.test_run::test_trailing_volatility_is_none_below_window",
+        "tests.test_run::test_trailing_volatility_is_nonnegative",
+        "tests.test_run::test_vol_no_capture_reason_names_the_ticker_and_the_sibling",
+        "tests.test_run::test_vol_reason_distinguishes_no_listed_options_from_no_contract_yet",
+        "tests.test_run::test_write_charts_records_peer_fetch_errors_without_raising",
+        "tests.test_run::test_write_charts_returns_nothing_when_subject_itself_fails",
+        "tests.test_run::test_write_charts_writes_three_pngs",
+        "tests.test_run::test_write_tearsheet_contains_subject_and_peers",
+        "tests.test_run::test_write_tearsheet_lists_chart_files",
+        "tests.test_screener::test_apply_filters_drops_below_min_turnover",
+        "tests.test_screener::test_apply_filters_gates_on_turnover_not_raw_share_volume",
+        "tests.test_sentiment_gate::test_apply_sentiment_gate_attaches_the_block_to_the_matching_ticker_only",
+        "tests.test_sentiment_gate::test_apply_sentiment_gate_does_not_mutate_the_input_screen",
+        "tests.test_sentiment_gate::test_apply_sentiment_gate_leaves_every_candidate_unchanged_when_ticker_is_outside_the_universe",
+        "tests.test_sentiment_gate::test_apply_sentiment_gate_matches_without_the_ns_suffix",
+        "tests.test_sentiment_gate::test_load_contract_accepts_a_null_score_7d",
+        "tests.test_sentiment_gate::test_load_contract_accepts_a_present_but_null_score_7d",
+        "tests.test_sentiment_gate::test_load_contract_reads_the_real_headline_sentiment_fixture",
+        "tests.test_sentiment_gate::test_load_contract_rejects_a_file_with_no_sentiment_block",
+        "tests.test_sentiment_gate::test_load_contract_rejects_a_sentiment_block_missing_keys",
+        "tests.test_sentiment_gate::test_main_against_the_real_fortis_fixture_reports_no_match_honestly",
+        "tests.test_sentiment_gate::test_main_against_the_real_infy_fixture_reports_no_match_honestly",
+        "tests.test_sentiment_gate::test_main_defaults_out_to_overwriting_the_screen_in_place",
+        "tests.test_sentiment_gate::test_main_writes_the_gated_screen_when_the_ticker_matches",
+        "tests.test_sizing_gate::test_apply_sizing_gate_attaches_the_block_to_the_matching_ticker_only",
+        "tests.test_sizing_gate::test_apply_sizing_gate_does_not_mutate_the_input_screen",
+        "tests.test_sizing_gate::test_apply_sizing_gate_leaves_every_candidate_unchanged_when_ticker_is_outside_the_universe",
+        "tests.test_sizing_gate::test_apply_sizing_gate_matches_without_the_ns_suffix",
+        "tests.test_sizing_gate::test_load_contract_reads_the_real_markowitz_fixture",
+        "tests.test_sizing_gate::test_load_contract_rejects_a_file_with_no_sizing_block",
+        "tests.test_sizing_gate::test_load_contract_rejects_a_sizing_block_missing_keys",
+        "tests.test_sizing_gate::test_main_against_the_real_reliance_fixture_reports_a_genuine_match",
+        "tests.test_sizing_gate::test_main_defaults_out_to_overwriting_the_screen_in_place",
+        "tests.test_sizing_gate::test_main_writes_the_gated_screen_when_the_ticker_matches",
+        "tests.test_valuation_gate::test_apply_valuation_gate_attaches_the_block_to_the_matching_ticker_only",
+        "tests.test_valuation_gate::test_apply_valuation_gate_does_not_mutate_the_input_screen",
+        "tests.test_valuation_gate::test_apply_valuation_gate_leaves_every_candidate_unchanged_when_ticker_is_outside_the_universe",
+        "tests.test_valuation_gate::test_apply_valuation_gate_matches_without_the_ns_suffix",
+        "tests.test_valuation_gate::test_load_contract_reads_the_real_reverse_dcf_engine_fixture",
+        "tests.test_valuation_gate::test_load_contract_rejects_a_file_with_no_valuation_block",
+        "tests.test_valuation_gate::test_load_contract_rejects_a_valuation_block_missing_keys",
+        "tests.test_valuation_gate::test_main_against_the_real_gulfoillub_fixture_reports_no_match_honestly",
+        "tests.test_valuation_gate::test_main_defaults_out_to_overwriting_the_screen_in_place",
+        "tests.test_valuation_gate::test_main_writes_the_gated_screen_when_the_ticker_matches",
+        "tests.test_vol_gate::test_apply_vol_gate_attaches_the_block_to_the_matching_ticker_only",
+        "tests.test_vol_gate::test_apply_vol_gate_does_not_mutate_the_input_screen",
+        "tests.test_vol_gate::test_apply_vol_gate_leaves_every_candidate_unchanged_when_ticker_is_outside_the_universe",
+        "tests.test_vol_gate::test_apply_vol_gate_matches_without_the_ns_suffix",
+        "tests.test_vol_gate::test_load_contract_accepts_a_present_but_null_iv_rank_1y",
+        "tests.test_vol_gate::test_load_contract_reads_the_real_implied_vol_surface_fixture",
+        "tests.test_vol_gate::test_load_contract_rejects_a_file_with_no_vol_block",
+        "tests.test_vol_gate::test_load_contract_rejects_a_vol_block_missing_keys",
+        "tests.test_vol_gate::test_main_against_the_real_reliance_fixture_reports_a_genuine_match",
+        "tests.test_vol_gate::test_main_defaults_out_to_overwriting_the_screen_in_place",
+        "tests.test_vol_gate::test_main_writes_the_gated_screen_when_the_ticker_matches"
+      ],
+      "repeated_from_prior_run": [
+        "tests.test_audit::test_centered_rolling_mean_is_flagged",
+        "tests.test_audit::test_real_obv_is_causal",
+        "tests.test_audit::test_real_rsi_is_causal",
+        "tests.test_audit::test_real_sma_is_causal",
+        "tests.test_audit::test_run_audit_clean_on_real_universe",
+        "tests.test_audit::test_run_audit_reports_missing_ticker",
+        "tests.test_audit::test_shift_negative_is_flagged",
+        "tests.test_backtest::test_backtest_ticker_raises_when_history_is_too_short",
+        "tests.test_backtest::test_backtest_ticker_shape",
+        "tests.test_backtest::test_burn_in_period_takes_the_slowest_indicator",
+        "tests.test_backtest::test_buy_and_hold_return_is_zero_for_a_too_short_window",
+        "tests.test_backtest::test_buy_and_hold_return_matches_manual_ratio",
+        "tests.test_backtest::test_cumulative_return_compounds",
+        "tests.test_backtest::test_long_flat_returns_are_zero_when_score_never_clears_threshold",
+        "tests.test_backtest::test_long_flat_returns_capture_the_next_bar_after_a_qualifying_score",
+        "tests.test_backtest::test_main_empty_universe_is_a_clean_failure",
+        "tests.test_backtest::test_main_rejects_live_and_offline_together",
+        "tests.test_backtest::test_main_runs_offline_against_the_real_fixtures_and_writes_all_three_files",
+        "tests.test_backtest::test_run_backtest_records_a_fetch_error_without_failing_the_run",
+        "tests.test_backtest::test_run_backtest_summary_matches_results",
+        "tests.test_backtest::test_walk_forward_score_matches_a_full_screen_on_the_same_slice",
+        "tests.test_backtest::test_walk_forward_scores_are_nan_inside_burn_in_and_bounded_after",
+        "tests.test_backtest::test_write_csv_has_one_row_per_ticker",
+        "tests.test_backtest::test_write_json_round_trips_the_report",
+        "tests.test_backtest::test_write_markdown_handles_no_results",
+        "tests.test_backtest::test_write_markdown_reports_beats_and_caveats",
+        "tests.test_classification_and_filtering::test_changing_weights_flips_which_of_two_opposed_candidates_ranks_first",
+        "tests.test_classification_and_filtering::test_combined_score_and_liquidity_gates_keep_only_the_one_ticker_that_clears_both",
+        "tests.test_classification_and_filtering::test_each_dropped_ticker_was_excluded_for_its_own_documented_reason",
+        "tests.test_classification_and_filtering::test_liquidity_gate_boundary_is_inclusive",
+        "tests.test_classification_and_filtering::test_sustained_downtrend_with_falling_volume_classifies_bearish_on_every_factor",
+        "tests.test_classification_and_filtering::test_sustained_uptrend_with_rising_volume_classifies_bullish_on_every_factor",
+        "tests.test_classification_and_filtering::test_tightening_the_score_gate_monotonically_shrinks_the_survivor_set",
+        "tests.test_classification_and_filtering::test_trend_score_is_a_graded_response_not_a_step_function",
+        "tests.test_classification_and_filtering::test_uptrend_on_fading_volume_is_bullish_but_less_than_confirmed_uptrend",
+        "tests.test_classification_and_filtering::test_zero_drift_zigzag_classifies_as_genuinely_neutral",
+        "tests.test_liquidity::test_high_activity_zones_empty_when_no_volume",
+        "tests.test_liquidity::test_high_activity_zones_flags_a_spike_bin",
+        "tests.test_liquidity::test_high_activity_zones_flags_nothing_when_volume_is_uniform",
+        "tests.test_liquidity::test_high_activity_zones_rejects_non_positive_threshold",
+        "tests.test_liquidity::test_plot_liquidity_heatmap_runs_with_no_high_activity_zones",
+        "tests.test_liquidity::test_plot_liquidity_heatmap_writes_a_png",
+        "tests.test_liquidity::test_volume_at_price_bins_span_the_close_range",
+        "tests.test_liquidity::test_volume_at_price_conserves_total_volume",
+        "tests.test_liquidity::test_volume_at_price_flat_price_series_is_one_degenerate_bin",
+        "tests.test_liquidity::test_volume_at_price_has_one_row_per_bin",
+        "tests.test_liquidity::test_volume_at_price_monotonic_series_bins_are_ascending_in_price",
+        "tests.test_liquidity::test_volume_at_price_puts_each_days_volume_in_its_own_bin",
+        "tests.test_liquidity::test_volume_at_price_rejects_empty_frame",
+        "tests.test_liquidity::test_volume_at_price_rejects_non_positive_bins",
+        "tests.test_live_provider_smoke::test_yfinance_provider_gives_real_live_values_or_fails_cleanly",
+        "tests.test_live_provider_smoke::test_yfinance_provider_never_leaks_a_raw_exception",
+        "tests.test_momentum::test_macd_histogram_equals_macd_minus_signal",
+        "tests.test_momentum::test_macd_is_zero_for_a_flat_series",
+        "tests.test_momentum::test_macd_line_matches_ema_difference",
+        "tests.test_momentum::test_macd_rejects_fast_not_less_than_slow",
+        "tests.test_momentum::test_macd_shape_and_columns",
+        "tests.test_momentum::test_momentum_score_is_bounded_and_finite",
+        "tests.test_momentum::test_momentum_score_negative_for_a_strictly_falling_series",
+        "tests.test_momentum::test_momentum_score_positive_for_a_strictly_rising_series",
+        "tests.test_momentum::test_momentum_score_too_short_for_either_indicator_is_zero",
+        "tests.test_momentum::test_momentum_score_zero_for_a_flat_series",
+        "tests.test_momentum::test_rsi_is_0_for_a_strictly_falling_series",
+        "tests.test_momentum::test_rsi_is_100_for_a_strictly_rising_series",
+        "tests.test_momentum::test_rsi_is_50_for_a_flat_series",
+        "tests.test_momentum::test_rsi_leading_values_are_nan_then_bounded",
+        "tests.test_momentum::test_rsi_matches_textbook_wilder_in_the_opening_window",
+        "tests.test_momentum::test_rsi_rejects_non_positive_period",
+        "tests.test_package::test_fixtures_are_present_and_non_empty",
+        "tests.test_package::test_schema_is_valid_json_and_versioned",
+        "tests.test_package::test_version_is_set",
+        "tests.test_providers.TestAlphaVantageNotices::test_clean_payload_passes",
+        "tests.test_providers.TestAlphaVantageNotices::test_error_message_field_is_credentials",
+        "tests.test_providers.TestAlphaVantageNotices::test_key_message_raises_bad_credentials",
+        "tests.test_providers.TestAlphaVantageNotices::test_quota_message_raises_rate_limited",
+        "tests.test_providers::test_empty_frame_is_an_error_not_an_empty_result",
+        "tests.test_providers::test_fixture_fetch_returns_the_shared_shape",
+        "tests.test_providers::test_fixture_provider_lists_committed_tickers",
+        "tests.test_providers::test_get_provider_rejects_unknown_names",
+        "tests.test_providers::test_load_defaults_to_fixtures",
+        "tests.test_providers::test_missing_column_fails_loudly",
+        "tests.test_providers::test_missing_key_points_at_the_offline_path",
+        "tests.test_providers::test_multiindex_columns_are_flattened",
+        "tests.test_providers::test_unknown_fixture_names_the_alternatives",
+        "tests.test_report::test_main_empty_universe_is_a_clean_failure",
+        "tests.test_report::test_main_no_charts_skips_chart_files",
+        "tests.test_report::test_main_rejects_live_and_offline_together",
+        "tests.test_report::test_main_runs_offline_and_writes_charts",
+        "tests.test_report::test_render_backtest_table_lists_every_result",
+        "tests.test_report::test_render_screen_table_handles_no_candidates",
+        "tests.test_report::test_render_screen_table_lists_every_candidate",
+        "tests.test_report::test_write_charts_draws_one_heatmap_per_ticker",
+        "tests.test_report::test_write_charts_records_a_bad_ticker_instead_of_raising",
+        "tests.test_screener::test_apply_filters_drops_below_min_score",
+        "tests.test_screener::test_blended_score_all_negative_signals_is_zero",
+        "tests.test_screener::test_blended_score_all_positive_signals_is_one",
+        "tests.test_screener::test_blended_score_falls_back_to_equal_weight_when_weights_are_all_zero",
+        "tests.test_screener::test_blended_score_neutral_signals_is_a_half",
+        "tests.test_screener::test_blended_score_weights_need_not_sum_to_one",
+        "tests.test_screener::test_build_screen_ranks_the_real_universe",
+        "tests.test_screener::test_build_screen_records_a_fetch_error_without_failing_the_run",
+        "tests.test_screener::test_compute_signals_bounded",
+        "tests.test_screener::test_liquidity_metrics_matches_manual_mean",
+        "tests.test_screener::test_load_config_fills_missing_keys_within_a_present_section",
+        "tests.test_screener::test_load_config_fills_missing_sections_from_defaults",
+        "tests.test_screener::test_load_config_reads_the_committed_rules_file",
+        "tests.test_screener::test_load_universe_missing_file_is_empty",
+        "tests.test_screener::test_load_universe_skips_blanks_and_comments",
+        "tests.test_screener::test_main_empty_universe_is_a_clean_failure",
+        "tests.test_screener::test_main_rejects_live_and_offline_together",
+        "tests.test_screener::test_main_runs_offline_against_the_real_fixtures_and_writes_all_three_files",
+        "tests.test_screener::test_rank_orders_by_score_descending_and_stamps_rank",
+        "tests.test_screener::test_write_csv_has_one_row_per_candidate",
+        "tests.test_screener::test_write_json_round_trips_the_screen",
+        "tests.test_screener::test_write_markdown_reports_errors_and_empty_screens",
+        "tests.test_trend::test_crossover_events_fire_only_on_the_flip_bar",
+        "tests.test_trend::test_crossover_events_needs_two_defined_bars",
+        "tests.test_trend::test_crossover_state_signs_and_undefined_rows",
+        "tests.test_trend::test_ema_crossover_rejects_fast_not_less_than_slow",
+        "tests.test_trend::test_ema_matches_pandas_ewm",
+        "tests.test_trend::test_ema_rejects_non_positive_span",
+        "tests.test_trend::test_sma_crossover_detects_a_known_death_cross",
+        "tests.test_trend::test_sma_crossover_detects_a_known_golden_cross",
+        "tests.test_trend::test_sma_crossover_rejects_fast_not_less_than_slow",
+        "tests.test_trend::test_sma_leading_values_are_nan_then_defined",
+        "tests.test_trend::test_sma_matches_pandas_rolling_mean",
+        "tests.test_trend::test_sma_rejects_non_positive_window",
+        "tests.test_trend::test_sma_window_one_equals_close",
+        "tests.test_trend::test_trend_score_ema_also_bounded",
+        "tests.test_trend::test_trend_score_flat_price_is_zero",
+        "tests.test_trend::test_trend_score_is_bounded_and_finite",
+        "tests.test_trend::test_trend_score_negative_when_price_ramping_down",
+        "tests.test_trend::test_trend_score_positive_when_price_ramping_up",
+        "tests.test_trend::test_trend_score_rejects_unknown_method",
+        "tests.test_volume::test_obv_adds_volume_on_up_days_and_subtracts_on_down_days",
+        "tests.test_volume::test_obv_length_matches_input",
+        "tests.test_volume::test_obv_starts_at_zero_with_no_prior_close",
+        "tests.test_volume::test_volume_score_ignores_obv_component_when_window_exceeds_series_length",
+        "tests.test_volume::test_volume_score_is_bounded_and_finite",
+        "tests.test_volume::test_volume_score_negative_when_price_falls_on_uniform_volume",
+        "tests.test_volume::test_volume_score_positive_for_a_volume_spike_on_flat_price",
+        "tests.test_volume::test_volume_score_positive_when_price_rises_on_uniform_volume",
+        "tests.test_volume::test_volume_score_zero_for_flat_price_and_flat_volume",
+        "tests.test_volume::test_volume_zscore_flags_a_spike",
+        "tests.test_volume::test_volume_zscore_is_zero_for_constant_volume",
+        "tests.test_volume::test_volume_zscore_leading_values_are_nan_then_defined",
+        "tests.test_volume::test_volume_zscore_matches_manual_calculation",
+        "tests.test_volume::test_volume_zscore_rejects_small_window"
+      ]
     }
   ],
   "project": "STOCKSTALKER"
