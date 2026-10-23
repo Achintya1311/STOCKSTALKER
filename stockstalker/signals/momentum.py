@@ -12,6 +12,20 @@ import pandas as pd
 
 from .trend import ema
 
+# momentum_score's MACD component saturates once the histogram reaches this
+# fraction of price (1.0 == 1%). Fixed and shared across every ticker by
+# deliberate choice, not fit to any one name's own histogram distribution:
+# it reads directly as "the histogram is at least 1% of price", a round,
+# ticker-independent threshold for "a strong MACD reading" that stays
+# interpretable without per-stock recalibration. The known cost of that
+# fixed-ness, measured against the three screened fixtures (D19): the
+# component saturates on 1.9% of RELIANCE's bars, 7.1% of TATACHEM's, 9.4%
+# of CROMPTON's -- more volatile names compress more often into +-1 and lose
+# some separation between genuinely different momentum strengths. Accepted
+# as the stated tradeoff for a fixed, comparable scale rather than switched
+# to a self-calibrated (per-ticker, distribution-fit) bound.
+MACD_HISTOGRAM_SATURATION_PCT = 1.0
+
 
 def _wilder_smooth(values: pd.Series, period: int) -> pd.Series:
     """Wilder's smoothing: simple-mean seed, then his recursion.
@@ -80,9 +94,12 @@ def momentum_score(
 
     Two components, averaged: RSI re-centred on 50 and scaled to +-1 (50 is
     "no momentum" either way, by construction), and the MACD histogram as a
-    percentage of price, clipped at +-1. This is a snapshot of the most
-    recent bar, not a backtest signal — it feeds the ``signals.momentum``
-    field of the v1 screen contract.
+    percentage of price, clipped at +-1 once it reaches
+    :data:`MACD_HISTOGRAM_SATURATION_PCT` (see that constant's docstring for
+    why 1% of price is a deliberate, fixed calibration rather than an
+    arbitrary round number). This is a snapshot of the most recent bar, not
+    a backtest signal — it feeds the ``signals.momentum`` field of the v1
+    screen contract.
     """
     latest_rsi = rsi(close, rsi_period).iloc[-1]
     rsi_component = 0.0 if pd.isna(latest_rsi) else float(np.clip((latest_rsi - 50) / 50, -1.0, 1.0))
@@ -92,6 +109,9 @@ def momentum_score(
     if pd.isna(histogram) or latest_close == 0:
         macd_component = 0.0
     else:
-        macd_component = float(np.clip((histogram / latest_close) * 100, -1.0, 1.0))
+        pct_of_price = (histogram / latest_close) * 100
+        macd_component = float(
+            np.clip(pct_of_price / MACD_HISTOGRAM_SATURATION_PCT, -1.0, 1.0)
+        )
 
     return float(np.clip(0.5 * rsi_component + 0.5 * macd_component, -1.0, 1.0))

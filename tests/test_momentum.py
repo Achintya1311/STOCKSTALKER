@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from stockstalker.data.providers import FixtureProvider
+from stockstalker.signals import momentum
 from stockstalker.signals.momentum import macd, momentum_score, rsi
 
 
@@ -144,3 +145,34 @@ def test_momentum_score_too_short_for_either_indicator_is_zero():
     idx = pd.date_range("2026-01-01", periods=5)
     close = pd.Series([100.0, 101.0, 99.0, 102.0, 98.0], index=idx)
     assert momentum_score(close) == 0.0
+
+
+def test_macd_saturation_threshold_is_the_documented_one_percent_of_price():
+    """Pins the deliberate, fixed 1%-of-price MACD saturation bound (D19) --
+    not an arbitrary round number, and not something that should silently
+    drift to a different value without this test catching it."""
+    assert momentum.MACD_HISTOGRAM_SATURATION_PCT == 1.0
+
+
+def test_momentum_score_macd_component_is_not_yet_saturated_just_below_threshold(monkeypatch):
+    idx = pd.date_range("2026-01-01", periods=1)
+    close = pd.Series([100.0], index=idx)
+    # Histogram at 0.99% of price: just under the saturation bound.
+    fake_macd = pd.DataFrame({"macd": [0.0], "signal": [0.0], "histogram": [0.99]}, index=idx)
+    monkeypatch.setattr(momentum, "macd", lambda *a, **k: fake_macd)
+    monkeypatch.setattr(momentum, "rsi", lambda *a, **k: pd.Series([float("nan")], index=idx))
+
+    score = momentum_score(close)
+    assert score == pytest.approx(0.5 * 0.99)
+
+
+def test_momentum_score_macd_component_saturates_at_the_one_percent_threshold(monkeypatch):
+    idx = pd.date_range("2026-01-01", periods=1)
+    close = pd.Series([100.0], index=idx)
+    # Histogram at exactly 1% of price: right at the documented bound.
+    fake_macd = pd.DataFrame({"macd": [0.0], "signal": [0.0], "histogram": [1.0]}, index=idx)
+    monkeypatch.setattr(momentum, "macd", lambda *a, **k: fake_macd)
+    monkeypatch.setattr(momentum, "rsi", lambda *a, **k: pd.Series([float("nan")], index=idx))
+
+    score = momentum_score(close)
+    assert score == pytest.approx(0.5 * 1.0)
