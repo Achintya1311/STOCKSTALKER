@@ -103,6 +103,7 @@ from typing import Any
 from rich.console import Console
 from rich.table import Table
 
+from .backtest import burn_in_period
 from .data.providers import ProviderError, load, local_csv_path
 from .gates import factor as gate_factor
 from .gates import fundamentals as gate_fundamentals
@@ -182,17 +183,35 @@ def trailing_volatility(df, window: int = TRADING_DAYS_PER_YEAR) -> float | None
 def build_subject_section(
     ticker: str, provider_name: str, cfg: dict[str, Any], use_cache: bool = True
 ) -> dict[str, Any]:
-    """Price section for the subject: the screen's own signals, score and liquidity."""
+    """Price section for the subject: the screen's own signals, score and liquidity.
+
+    Below the burn-in floor every signal in ``compute_signals`` silently
+    defaults to ``0.0`` and ``blended_score`` renders a confident-looking
+    ``0.5000`` -- the same "thin history reads as neutral" trap
+    ``trailing_return``/``trailing_volatility`` already guard against above.
+    ``score``/``signals`` fall back to ``None`` plus a one-line
+    ``history_reason`` instead, the convention every other unavailable
+    contract section in this front door already uses.
+    """
     df = load(to_yf_ticker(ticker), provider=provider_name, use_cache=use_cache)
-    signals = compute_signals(df, cfg)
-    return {
+    section: dict[str, Any] = {
         "ticker": ticker.upper(),
         "as_of": df.index[-1].date().isoformat(),
         "close": round(float(df["close"].iloc[-1]), 4),
-        "score": blended_score(signals, cfg["weights"]),
-        "signals": {k: round(v, 4) for k, v in signals.items()},
         "liquidity": liquidity_metrics(df),
     }
+    required_bars = burn_in_period(cfg) + 1
+    if len(df) < required_bars:
+        section["score"] = None
+        section["signals"] = None
+        section["history_reason"] = (
+            f"not enough history for a score yet ({len(df)} bars, need {required_bars})"
+        )
+        return section
+    signals = compute_signals(df, cfg)
+    section["score"] = blended_score(signals, cfg["weights"])
+    section["signals"] = {k: round(v, 4) for k, v in signals.items()}
+    return section
 
 
 def build_peer_table(
@@ -710,6 +729,15 @@ def render_subject_table(subject: dict[str, Any]) -> Table:
     table.add_column("Momentum", justify="right")
     table.add_column("Volume", justify="right")
     table.add_column("ADV(20d)", justify="right")
+    if subject["score"] is None:
+        table.add_row(
+            subject["history_reason"],
+            "n/a",
+            "n/a",
+            "n/a",
+            f"{subject['liquidity']['adv_20d']:,.0f}",
+        )
+        return table
     s = subject["signals"]
     table.add_row(
         f"{subject['score']:.4f}",
@@ -745,12 +773,18 @@ def write_tearsheet(
     contract_sections: list[dict[str, Any]] | None = None,
     chart_paths: list[Path] | None = None,
 ) -> None:
-    s = subject["signals"]
+    if subject["score"] is None:
+        score_line = f"Score not available -- {subject['history_reason']}"
+    else:
+        s = subject["signals"]
+        score_line = (
+            f"Score {subject['score']:.4f} "
+            f"(trend {s['trend']:+.3f}, momentum {s['momentum']:+.3f}, volume {s['volume']:+.3f})"
+        )
     lines = [
         f"# Tear sheet — {subject['ticker']} ({generated})",
         "",
-        f"Close {subject['close']:,.2f} as of {subject['as_of']}. Score {subject['score']:.4f} "
-        f"(trend {s['trend']:+.3f}, momentum {s['momentum']:+.3f}, volume {s['volume']:+.3f}), "
+        f"Close {subject['close']:,.2f} as of {subject['as_of']}. {score_line}, "
         f"ADV(20d) {subject['liquidity']['adv_20d']:,.0f}.",
         "",
         "Technical signals describe how the price has behaved, not what the business is "

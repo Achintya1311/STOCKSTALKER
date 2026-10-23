@@ -83,6 +83,30 @@ def test_build_subject_section_reuses_screener_scoring(cfg, gulfoillub):
     assert subject["liquidity"] == screener.liquidity_metrics(gulfoillub)
 
 
+def test_build_subject_section_reports_insufficient_history_instead_of_a_score(
+    cfg, monkeypatch
+):
+    from stockstalker import backtest
+
+    required = backtest.burn_in_period(cfg) + 1
+    short = pd.DataFrame(
+        {
+            "open": [1.0] * 10,
+            "high": [1.0] * 10,
+            "low": [1.0] * 10,
+            "close": list(range(1, 11)),
+            "volume": [100] * 10,
+        },
+        index=pd.date_range("2026-10-01", periods=10, freq="D"),
+    )
+    monkeypatch.setattr(run, "load", lambda *a, **k: short)
+    subject = run.build_subject_section("NEWLISTING", "fixtures", cfg)
+    assert subject["score"] is None
+    assert subject["signals"] is None
+    assert subject["history_reason"] == f"not enough history for a score yet (10 bars, need {required})"
+    assert subject["close"] == 10.0
+
+
 def test_build_peer_table_covers_subject_and_every_peer(cfg):
     rows = run.build_peer_table(["GULFOILLUB", *run.DEFAULT_PEERS], "fixtures")
     assert [r["ticker"] for r in rows] == ["GULFOILLUB", "CASTROLIND", "SOTL", "GANDHAR"]
@@ -105,6 +129,37 @@ def test_render_subject_table_includes_ticker_and_score(cfg):
     text = render(run.render_subject_table(subject))
     assert "GULFOILLUB" in text
     assert f"{subject['score']:.4f}" in text
+
+
+def test_render_subject_table_shows_history_reason_instead_of_crashing():
+    subject = {
+        "ticker": "NEWLISTING",
+        "as_of": "2026-10-23",
+        "close": 10.0,
+        "score": None,
+        "signals": None,
+        "history_reason": "not enough history for a score yet (10 bars, need 51)",
+        "liquidity": {"adv_20d": 0.0, "turnover_20d": 0.0},
+    }
+    text = render(run.render_subject_table(subject))
+    assert "NEWLISTING" in text
+    assert "not enough history for a score yet (10 bars, need 51)" in text
+
+
+def test_write_tearsheet_shows_history_reason_instead_of_crashing(tmp_path):
+    subject = {
+        "ticker": "NEWLISTING",
+        "as_of": "2026-10-23",
+        "close": 10.0,
+        "score": None,
+        "signals": None,
+        "history_reason": "not enough history for a score yet (10 bars, need 51)",
+        "liquidity": {"adv_20d": 0.0, "turnover_20d": 0.0},
+    }
+    path = tmp_path / "tearsheet.md"
+    run.write_tearsheet(subject, [], "2026-10-23", path)
+    text = path.read_text()
+    assert "not enough history for a score yet (10 bars, need 51)" in text
 
 
 def test_render_peer_table_shows_na_for_missing_stats():
