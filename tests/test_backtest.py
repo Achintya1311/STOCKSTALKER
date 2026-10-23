@@ -137,6 +137,69 @@ def test_buy_and_hold_return_with_costs_is_zero_for_a_too_short_window(reliance)
     assert backtest.buy_and_hold_return_with_costs(reliance, start_idx=len(reliance) - 1) == 0.0
 
 
+def test_random_exposure_returns_is_deterministic_and_bounded_by_draw_count():
+    idx = pd.date_range("2024-01-01", periods=6, freq="D")
+    df = pd.DataFrame({"close": [100.0, 110.0, 99.0, 108.9, 98.0, 107.8]}, index=idx)
+    draws_a = backtest.random_exposure_returns(df, start_idx=1, days_long=2, n_draws=50, seed=7)
+    draws_b = backtest.random_exposure_returns(df, start_idx=1, days_long=2, n_draws=50, seed=7)
+    assert len(draws_a) == 50
+    np.testing.assert_array_equal(draws_a, draws_b)  # same seed, same draws
+
+
+def test_random_exposure_returns_with_full_exposure_matches_buy_and_hold_style_compounding():
+    idx = pd.date_range("2024-01-01", periods=5, freq="D")
+    df = pd.DataFrame({"close": [100.0, 110.0, 121.0, 108.9, 120.0]}, index=idx)
+    daily_return = df["close"].pct_change().iloc[1:]
+    expected = float((1 + daily_return).prod() - 1)
+    # days_long == every tested day -> only one possible subset, every draw identical
+    draws = backtest.random_exposure_returns(df, start_idx=1, days_long=len(daily_return), n_draws=10, seed=1)
+    assert draws == pytest.approx(expected)
+
+
+def test_random_exposure_returns_is_zero_when_days_long_is_zero():
+    idx = pd.date_range("2024-01-01", periods=4, freq="D")
+    df = pd.DataFrame({"close": [100.0, 110.0, 90.0, 95.0]}, index=idx)
+    draws = backtest.random_exposure_returns(df, start_idx=1, days_long=0, n_draws=20, seed=3)
+    assert (draws == 0.0).all()
+
+
+def test_backtest_ticker_reports_the_exposure_matched_random_baseline(cfg):
+    # Characterizes D16: the strategy must be compared against being long
+    # `days_long` days picked at random, not just against 100%-exposure
+    # buy-and-hold -- this is new and absent before the D16 fix.
+    result = backtest.backtest_ticker("RELIANCE.NS", "fixtures", cfg)
+    assert "exposure_matched_mean_return" in result
+    assert "exposure_matched_std_return" in result
+    assert "beat_exposure_matched_random" in result
+    assert "exposure_matched_percentile" in result
+    assert result["exposure_matched_std_return"] >= 0.0
+    assert 0.0 <= result["exposure_matched_percentile"] <= 1.0
+    assert result["beat_exposure_matched_random"] == (
+        result["strategy_return"] > result["exposure_matched_mean_return"]
+    )
+
+
+def test_backtest_ticker_exposure_matched_baseline_is_deterministic_across_runs(cfg):
+    first = backtest.backtest_ticker("RELIANCE.NS", "fixtures", cfg)
+    second = backtest.backtest_ticker("RELIANCE.NS", "fixtures", cfg)
+    assert first["exposure_matched_mean_return"] == second["exposure_matched_mean_return"]
+    assert first["exposure_matched_std_return"] == second["exposure_matched_std_return"]
+
+
+def test_run_backtest_summary_reports_exposure_matched_count_and_edge_uncertainty(cfg):
+    tickers = screener.load_universe(screener.UNIVERSE_PATH)
+    report = backtest.run_backtest(tickers, "fixtures", cfg, generated="2026-09-07")
+    s = report["summary"]
+    assert "tickers_beating_exposure_matched_random" in s
+    assert s["tickers_beating_exposure_matched_random"] == sum(
+        1 for r in report["results"] if r["beat_exposure_matched_random"]
+    )
+    assert "mean_edge_stderr" in s
+    edges = [r["edge"] for r in report["results"]]
+    expected_stderr = float(np.std(edges, ddof=1) / np.sqrt(len(edges)))
+    assert s["mean_edge_stderr"] == pytest.approx(expected_stderr, abs=5e-5)
+
+
 def test_backtest_ticker_shape(cfg):
     result = backtest.backtest_ticker("RELIANCE.NS", "fixtures", cfg)
     assert set(result) >= {
@@ -145,6 +208,8 @@ def test_backtest_ticker_shape(cfg):
         "buy_and_hold_return", "buy_and_hold_return_with_costs",
         "edge", "edge_with_costs",
         "beat_buy_and_hold", "beat_buy_and_hold_with_costs",
+        "exposure_matched_mean_return", "exposure_matched_std_return",
+        "beat_exposure_matched_random", "exposure_matched_percentile",
     }
     assert result["ticker"] == "RELIANCE.NS"
     assert result["edge"] == pytest.approx(result["strategy_return"] - result["buy_and_hold_return"])

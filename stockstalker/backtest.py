@@ -18,10 +18,12 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import zlib
 from datetime import date
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from .data.providers import ProviderError, load
@@ -33,6 +35,7 @@ UNIVERSE_PATH = ROOT / "data" / "universe.txt"
 OUTPUT_DIR = ROOT / "outputs"
 
 DEFAULT_THRESHOLD = 0.5  # score >= 0.5 means the blend of signals is non-negative
+DEFAULT_RANDOM_EXPOSURE_DRAWS = 2000
 
 # Indian delivery-equity costs. STT is charged on both legs of a delivery
 # trade; stamp duty only on the buy leg (both NSE, as of this writing).
@@ -168,6 +171,39 @@ def buy_and_hold_return_with_costs(
     return float(effective_exit / effective_entry - 1)
 
 
+def random_exposure_returns(
+    df: pd.DataFrame,
+    start_idx: int,
+    days_long: int,
+    n_draws: int = DEFAULT_RANDOM_EXPOSURE_DRAWS,
+    seed: int | None = None,
+) -> np.ndarray:
+    """Cumulative return of being long ``days_long`` of the tested days, picked at random.
+
+    This is the exposure-matched baseline D16 asks for: 100%-exposure
+    buy-and-hold only answers "beats being long every day?" It says nothing
+    about whether the strategy's own chosen days are better than being long
+    the *same number* of days chosen by chance. Draws ``n_draws`` random
+    same-size subsets (without replacement) of the tested window's daily
+    returns and compounds each subset the same way :func:`long_flat_returns`
+    compounds the strategy's actual holding pattern.
+    """
+    daily_return = df["close"].pct_change().iloc[start_idx:].to_numpy()
+    n = len(daily_return)
+    if days_long <= 0 or n == 0:
+        return np.zeros(n_draws)
+    days_long = min(days_long, n)
+    rng = np.random.default_rng(seed)
+    # Vectorized without-replacement sampling: rank each day by an independent
+    # random key per draw, keep the lowest `days_long` ranks. Equivalent to
+    # `rng.choice(n, days_long, replace=False)` run `n_draws` times, without a
+    # Python-level loop over draws.
+    ranks = rng.random((n_draws, n))
+    chosen = np.argsort(ranks, axis=1)[:, :days_long]
+    selected_returns = daily_return[chosen]
+    return np.prod(1.0 + selected_returns, axis=1) - 1.0
+
+
 def backtest_ticker(
     ticker: str,
     provider_name: str,
@@ -201,6 +237,19 @@ def backtest_ticker(
     tested_scores = scores.iloc[burn_in:-1]  # scores that actually gated a next-day trade
     days_long = int((tested_scores >= threshold).sum())
 
+    # Exposure-matched random baseline (D16): is being long on *these*
+    # days better than being long this *often* on days picked by chance?
+    # A different question from buy-and-hold's "better than being long
+    # every day". Seeded from the ticker name so the same ticker always
+    # draws the same random subsets (reproducible, not a fresh roll per run).
+    seed = zlib.crc32(ticker.encode())
+    random_draws = random_exposure_returns(df, burn_in + 1, days_long, seed=seed)
+    exposure_matched_mean_return = float(random_draws.mean())
+    exposure_matched_std_return = (
+        float(random_draws.std(ddof=1)) if len(random_draws) > 1 else 0.0
+    )
+    exposure_matched_percentile = float((random_draws < strategy_cum).mean())
+
     return {
         "ticker": ticker,
         "start": df.index[burn_in].date().isoformat(),
@@ -215,6 +264,10 @@ def backtest_ticker(
         "edge_with_costs": round(strategy_cum_with_costs - hold_cum_with_costs, 4),
         "beat_buy_and_hold": strategy_cum > hold_cum,
         "beat_buy_and_hold_with_costs": strategy_cum_with_costs > hold_cum_with_costs,
+        "exposure_matched_mean_return": round(exposure_matched_mean_return, 4),
+        "exposure_matched_std_return": round(exposure_matched_std_return, 4),
+        "beat_exposure_matched_random": strategy_cum > exposure_matched_mean_return,
+        "exposure_matched_percentile": round(exposure_matched_percentile, 4),
     }
 
 
@@ -239,10 +292,21 @@ def run_backtest(
 
     n_beat = sum(1 for r in results if r["beat_buy_and_hold"])
     n_beat_with_costs = sum(1 for r in results if r["beat_buy_and_hold_with_costs"])
+    n_beat_random_exposure = sum(1 for r in results if r["beat_exposure_matched_random"])
+    # Simple honest uncertainty measure for the cross-ticker mean edge (D16):
+    # stderr of the per-ticker edges, not just their mean. With n=3 this is
+    # wide, not a claim of significance -- it says how wide, instead of
+    # saying nothing at all.
+    edges = [r["edge"] for r in results]
+    mean_edge_stderr = (
+        float(np.std(edges, ddof=1) / np.sqrt(len(edges))) if len(edges) > 1 else 0.0
+    )
     summary = {
         "tickers_tested": len(results),
         "tickers_beating_buy_and_hold": n_beat,
         "tickers_beating_buy_and_hold_with_costs": n_beat_with_costs,
+        "tickers_beating_exposure_matched_random": n_beat_random_exposure,
+        "mean_edge_stderr": round(mean_edge_stderr, 4),
         "mean_strategy_return": round(sum(r["strategy_return"] for r in results) / len(results), 4)
         if results
         else 0.0,
@@ -289,6 +353,8 @@ def write_csv(report: dict[str, Any], path: Path) -> None:
         "buy_and_hold_return", "buy_and_hold_return_with_costs",
         "edge", "edge_with_costs",
         "beat_buy_and_hold", "beat_buy_and_hold_with_costs",
+        "exposure_matched_mean_return", "exposure_matched_std_return",
+        "beat_exposure_matched_random", "exposure_matched_percentile",
     ]
     with path.open("w", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=fieldnames)
@@ -316,6 +382,25 @@ def _markdown_table(report: dict[str, Any], with_costs: bool = False) -> str:
     return "\n".join(rows)
 
 
+def _exposure_matched_markdown_table(report: dict[str, Any]) -> str:
+    """D16: beats being long this often, on these days, vs. being long this often at random."""
+    header = (
+        "| Ticker | Days long / tested | Strategy (no cost) | Random-exposure mean | "
+        "Random-exposure std | Beat random | Percentile |"
+    )
+    sep = "|--------|---------------------|---------------------|-----------------------|----------------------|--------------|------------|"
+    rows = [header, sep]
+    for r in report["results"]:
+        rows.append(
+            f"| {r['ticker']} | {r['days_long']}/{r['days_tested']} "
+            f"| {r['strategy_return']:+.2%} | {r['exposure_matched_mean_return']:+.2%} "
+            f"| {r['exposure_matched_std_return']:.2%} "
+            f"| {'yes' if r['beat_exposure_matched_random'] else 'no'} "
+            f"| {r['exposure_matched_percentile']:.0%} |"
+        )
+    return "\n".join(rows)
+
+
 def write_markdown(report: dict[str, Any], errors: list[str], path: Path) -> None:
     s = report["summary"]
     slippage_bps = report.get("slippage_bps", DEFAULT_SLIPPAGE_BPS)
@@ -334,8 +419,28 @@ def write_markdown(report: dict[str, Any], errors: list[str], path: Path) -> Non
         lines += [
             "",
             f"**{s['tickers_beating_buy_and_hold']}/{s['tickers_tested']}** ticker(s) beat "
-            f"buy-and-hold. Mean strategy return {s['mean_strategy_return']:+.2%} vs. "
-            f"mean buy-and-hold {s['mean_buy_and_hold_return']:+.2%}.",
+            f"100%-exposure buy-and-hold. Mean strategy return {s['mean_strategy_return']:+.2%} "
+            f"vs. mean buy-and-hold {s['mean_buy_and_hold_return']:+.2%} "
+            f"(mean edge {s['mean_strategy_return'] - s['mean_buy_and_hold_return']:+.2%} "
+            f"± stderr {s['mean_edge_stderr']:.2%}, n={s['tickers_tested']} — "
+            "three tickers is a wide error bar, not a claim of significance).",
+            "",
+            "### Exposure-matched random baseline (Day 58)",
+            "",
+            "100%-exposure buy-and-hold above answers \"beats being long every day?\" "
+            "This table answers a different question: is the strategy's own choice of "
+            f"days better than being long this *often* — the same `days_long` count — "
+            "on days picked at random? Each ticker's random-exposure mean/std/percentile "
+            f"come from {DEFAULT_RANDOM_EXPOSURE_DRAWS} random same-size draws of its own "
+            "tested window.",
+            "",
+        ]
+        lines.append(_exposure_matched_markdown_table(report))
+        lines += [
+            "",
+            f"**{s['tickers_beating_exposure_matched_random']}/{s['tickers_tested']}** "
+            "ticker(s) beat being long this often, on these days, vs. being long this "
+            "often at random.",
             "",
             "### With costs (Day 8)",
             "",
@@ -373,6 +478,11 @@ def write_markdown(report: dict[str, Any], errors: list[str], path: Path) -> Non
         "of what either side would actually pay.",
         "- Long/flat only. No short leg, so a strategy that only avoids the worst "
         "days can still show a smaller loss than buy-and-hold without ever making money.",
+        f"- The random-exposure baseline draws {DEFAULT_RANDOM_EXPOSURE_DRAWS} random "
+        "same-size subsets of each ticker's own already-realized daily returns (seeded "
+        "per ticker, so it reproduces run to run) — it is a resampling of the one "
+        "historical path that happened, not a fresh market simulation, and at n=3 "
+        "tickers the mean-edge stderr above is a wide error bar, not a significance claim.",
     ]
     path.write_text("\n".join(lines) + "\n")
 
@@ -385,20 +495,31 @@ def print_report(report: dict[str, Any], errors: list[str]) -> None:
     for r in report["results"]:
         verdict = "beats" if r["beat_buy_and_hold"] else "loses to"
         verdict_with_costs = "beats" if r["beat_buy_and_hold_with_costs"] else "loses to"
+        verdict_random = "beats" if r["beat_exposure_matched_random"] else "loses to"
         print(
             f"  {r['ticker']:<14} strategy {r['strategy_return']:+.2%} -> {r['strategy_return_with_costs']:+.2%} "
             f"with costs  buy&hold {r['buy_and_hold_return']:+.2%} -> {r['buy_and_hold_return_with_costs']:+.2%} "
             f"({verdict} buy&hold no-cost, {verdict_with_costs} with costs, "
             f"{r['days_long']}/{r['days_tested']} days long)"
         )
+        print(
+            f"  {'':<14} vs. random exposure (same {r['days_long']} days, chosen at random): "
+            f"mean {r['exposure_matched_mean_return']:+.2%} ± {r['exposure_matched_std_return']:.2%} "
+            f"({verdict_random} random, {r['exposure_matched_percentile']:.0%} percentile)"
+        )
     if report["results"]:
         print(
-            f"  {s['tickers_beating_buy_and_hold']}/{s['tickers_tested']} beat buy-and-hold (no cost) — "
-            f"mean {s['mean_strategy_return']:+.2%} vs {s['mean_buy_and_hold_return']:+.2%}"
+            f"  {s['tickers_beating_buy_and_hold']}/{s['tickers_tested']} beat 100%-exposure buy-and-hold (no cost) — "
+            f"mean {s['mean_strategy_return']:+.2%} vs {s['mean_buy_and_hold_return']:+.2%} "
+            f"(edge ± stderr {s['mean_edge_stderr']:.2%}, n={s['tickers_tested']})"
         )
         print(
             f"  {s['tickers_beating_buy_and_hold_with_costs']}/{s['tickers_tested']} beat buy-and-hold (with costs) — "
             f"mean {s['mean_strategy_return_with_costs']:+.2%} vs {s['mean_buy_and_hold_return_with_costs']:+.2%}"
+        )
+        print(
+            f"  {s['tickers_beating_exposure_matched_random']}/{s['tickers_tested']} beat being long this often, "
+            "on these days, vs. being long this often at random"
         )
     for e in errors:
         print(f"  ! {e}")

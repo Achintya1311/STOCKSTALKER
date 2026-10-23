@@ -4,7 +4,7 @@ Educational research on historical data. Not investment advice. Not a SEBI-regis
 
 **Question:** does the daily trend/momentum/volume screen beat simply buying and holding, once realistic Indian delivery-equity trading costs are included?
 **Method:** a walk-forward long/flat backtest — long the next day only when yesterday's blended screen score clears 0.5, no shorting — over three NSE names (RELIANCE, TATACHEM, CROMPTON), costed at 0.1% STT per side, 0.015% stamp duty on buys, and 10bps slippage.
-**Finding (Day 8, with costs):** only 1 of 3 names still beats buy-and-hold (mean −17.75% vs. −23.72%) — down from 2 of 3 before costs (Day 7). Full table in Findings below.
+**Finding (Day 58, the honest one):** only 1 of 3 names beats being long this often, on these days, vs. being long the same number of days at random — down from "2 of 3 beat 100%-exposure buy-and-hold" (Day 7), and down to 1 of 3 vs. buy-and-hold once costs are included too (mean −17.75% vs. −23.72%, Day 8). Full tables in Findings below.
 **Chart:** `outputs/tearsheet_GULFOILLUB_<date>.md` lists the three charts `stockstalker.run` writes to `outputs/` — GULFOILLUB vs. peers rebased to 100, drawdown from peak, rolling 1y volatility.
 **Reproduce:** `python -m stockstalker.backtest --offline` (the finding above) or `python -m stockstalker.run --ticker GULFOILLUB --offline` (the front door below).
 
@@ -190,13 +190,47 @@ score clears the bar, flat otherwise, no shorting, no costs — over the
 | TATACHEM.NS | +4.62% | -39.34% | +43.96% |
 | CROMPTON.NS | -35.32% | -36.05% | +0.73% |
 
-2 of 3 names beat buy-and-hold, but only by losing less during a steep
-decline: the strategy still lost money outright on TATACHEM and CROMPTON,
-and lost to buy-and-hold on RELIANCE, the one name that actually went up.
-Mean strategy return -10.85% vs. mean buy-and-hold -23.40%. Read this as
-"doesn't obviously do worse than being long," not as validated edge —
-three tickers over one overlapping two-year window is not a sample that
-supports a stronger claim either way.
+2 of 3 names beat 100%-exposure buy-and-hold, but only by losing less during
+a steep decline: the strategy still lost money outright on TATACHEM and
+CROMPTON, and lost to buy-and-hold on RELIANCE, the one name that actually
+went up. Mean strategy return -10.85% vs. mean buy-and-hold -23.40% (mean
+edge +12.55% ± stderr 15.86%, n=3 — three tickers is a wide error bar, not a
+significance claim). Read this as "doesn't obviously do worse than being
+long," not as validated edge — three tickers over one overlapping two-year
+window is not a sample that supports a stronger claim either way.
+
+### Day 58 — the same days, against being long this often at random
+
+Beating 100%-exposure buy-and-hold only answers "better than being long
+every day?" A strategy that is long 42% of days (RELIANCE), 36% (TATACHEM)
+or 31% (CROMPTON) could beat that just by being out of the market during a
+decline — not by picking good days. The honest comparison is against being
+long that *same number* of days, chosen at random, not against being long
+every day. `backtest.random_exposure_returns` draws 2,000 random same-size
+subsets of each ticker's own tested window and compounds each:
+
+| Ticker | Days long / tested | Strategy (no cost) | Random-exposure mean ± std | Beats random | Percentile |
+|---|---|---|---|---|---|
+| RELIANCE.NS | 188/450 | -1.85% | +2.73% ± 14.05% | no | 38th |
+| TATACHEM.NS | 163/450 | +4.62% | -15.06% ± 15.35% | yes | 90th |
+| CROMPTON.NS | 138/450 | -35.32% | -11.85% ± 15.66% | no | 5th |
+
+Only **1 of 3** beats being long this often, on these days, vs. being long
+this often at random — down from "2 of 3 beat buy-and-hold" above, and this
+is the harder, more honest number. TATACHEM's Day 7 edge survives this check
+(90th percentile of 2,000 random same-length exposures): its specific days
+were genuinely better than most random picks of the same count. CROMPTON's
+Day 7 "beat buy-and-hold" was the opposite of what it looked like — its
+actual days rank in the bottom 5% of random same-length exposures, i.e. the
+screen picked *worse* days than chance would, and it only "beat" buy-and-hold
+because 138/450 days long was a favorable amount of exposure during this
+ticker's decline, not because the screen chose which 138. RELIANCE's loss to
+buy-and-hold also isn't distinguishable from chance (38th percentile — a
+below-average but unremarkable random draw). Read "2 of 3 beat buy-and-hold"
+and "1 of 3 beats random exposure" as two different, both-true findings
+about the same backtest, not a contradiction: the first is about full
+exposure, the second is about the specific days chosen given the same amount
+of exposure. Full numbers in `outputs/backtest_<date>.{json,csv,md}`.
 
 ### Day 8 — the same table with costs
 
@@ -231,7 +265,7 @@ numbers for both tables, every run, in `outputs/backtest_<date>.{json,csv,md}`.
 - Technical signals describe how a price has behaved, not what a business is worth. Nothing here is a valuation, and nothing here is a recommendation.
 - The Alpha Vantage free tier is 25 requests/day. Live runs across a real universe are rate-limited by design, which is why the fixture path exists.
 - Any backtest in this repo is in-sample unless the README says otherwise in that specific section.
-- The screener's signal weights (`config/screen.yaml`) and each signal's internal blend (e.g. RSI/MACD 50/50 inside momentum) are hand-picked, not fit or optimized against anything. Day 7's walk-forward backtest against buy-and-hold (see Findings) found no clear edge — 2 of 3 tickers beat buy-and-hold, but only by losing less, and the strategy still lost to buy-and-hold on the one name that rose. Any future re-tuning of these weights against this same fixture window would be in-sample.
+- The screener's signal weights (`config/screen.yaml`) and each signal's internal blend (e.g. RSI/MACD 50/50 inside momentum) are hand-picked, not fit or optimized against anything. Day 7's walk-forward backtest against buy-and-hold (see Findings) found no clear edge — 2 of 3 tickers beat buy-and-hold, but only by losing less, and the strategy still lost to buy-and-hold on the one name that rose. Day 58's exposure-matched baseline (see Findings) is harder on the same backtest: only 1 of 3 beats being long this often, on these days, vs. being long the same number of days at random — CROMPTON's Day 7 "beat buy-and-hold" ranks in the bottom 5% of random same-length exposures, i.e. its 138 chosen days were worse than a random 138 days, not better. Any future re-tuning of these weights against this same fixture window would be in-sample.
 - The pipeline audit (`python -m stockstalker.audit`) only proves the indicators are causal — no future data leaks into a past bar's value. It says nothing about whether the screen's thresholds, weights, or the backtest's rule are any good; that question is still open per the two points above.
 - The v0.7 valuation gate (`stockstalker.gates.valuation`) reads reverse-dcf-engine's contract for Gulf Oil Lubricants India (GULFOILLUB), a name that is not in this repo's 3-ticker fixture universe (RELIANCE, TATACHEM, CROMPTON). Running the real integration end to end today produces zero matches — the gate logic is exercised by tests against a synthetic contract keyed to a universe ticker, but no genuine valuation figure has actually been attached to a live candidate yet. That happens only once the two repos' universes overlap, or a satellite is re-run against a shared ticker.
 - The v0.3 risk gate (`stockstalker.gates.risk`) reads monte-carlo-risk-lab's VaR/CVaR contract for RELIANCE, which *is* in this repo's universe, so `--risk-contract fixtures/risk/RELIANCE.json --risk-ticker RELIANCE` genuinely attaches to a live candidate rather than matching a synthetic stand-in. But the contract itself is only as good as monte-carlo-risk-lab's own model: that repo's README records that its Kupiec backtest rejects the 1-day parametric VaR at the 99% confidence level on this exact fixture (thin GBM tails understate real exceptions), and `var_95`/`cvar_95` here come from its historical (non-parametric) method specifically to avoid inheriting that failure — but the 99% figure was not in this contract at all until fix-phase Day 6. Fix-phase Day 5 added a one-line Kupiec caveat to the front door's console output and tear sheet (see `stockstalker.gates.risk.KUPIEC_NOTES`) so a reader no longer has to go read that repo directly to learn the 99% backtest fails here. **Superseded, fix-phase Day 6 (R5):** the contract file itself now carries `var_99`/`cvar_99` and the full `kupiec_95`/`kupiec_99` Kupiec backtest (`fixtures/risk/RELIANCE.json` regenerated by monte-carlo-risk-lab's own `mcsim.portfolio --contract`), so the 99%/Kupiec verdict is a real field in the contract, not just a caveat sourced to another repo's README. `kupiec_note` now computes its one-line summary from those real fields (`stockstalker.gates.risk._kupiec_verdict_note`) instead of the hardcoded `KUPIEC_NOTES` table, which is kept only as a fallback for a contract that hasn't been regenerated.
