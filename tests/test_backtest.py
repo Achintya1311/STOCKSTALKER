@@ -1,6 +1,7 @@
 """Backtest tests: burn-in sizing, walk-forward scoring, the long/flat
 rule, and the CLI end to end against the committed fixtures."""
 
+import copy
 import json
 
 import numpy as np
@@ -35,6 +36,34 @@ def test_walk_forward_scores_are_nan_inside_burn_in_and_bounded_after(reliance, 
     tail = scores.iloc[burn_in:]
     assert tail.notna().all()
     assert ((tail >= 0.0) & (tail <= 1.0)).all()
+
+
+def test_burn_in_period_includes_rsi_period_when_it_is_the_slowest_window(cfg):
+    cfg = copy.deepcopy(cfg)
+    other_windows = (
+        cfg["trend"]["slow"], cfg["momentum"]["macd_slow"],
+        cfg["volume"]["obv_window"], cfg["volume"]["z_window"],
+    )
+    cfg["momentum"]["rsi_period"] = max(other_windows) + 5
+    assert backtest.burn_in_period(cfg) >= cfg["momentum"]["rsi_period"]
+
+
+def test_walk_forward_scores_wait_for_rsi_when_it_is_the_slowest_signal(reliance, cfg):
+    """D17: a config where ``rsi_period`` exceeds every other window must not
+    let the blended score go non-NaN before RSI itself has a defined value —
+    otherwise momentum silently scores 0.0 for bars that aren't tested yet."""
+    cfg = copy.deepcopy(cfg)
+    other_windows = (
+        cfg["trend"]["slow"], cfg["momentum"]["macd_slow"],
+        cfg["volume"]["obv_window"], cfg["volume"]["z_window"],
+    )
+    rsi_period = max(other_windows) + 5
+    cfg["momentum"]["rsi_period"] = rsi_period
+
+    scores = backtest.walk_forward_scores(reliance, cfg)
+    rsi_first_defined_position = rsi_period  # rsi()'s first `period` points are NaN
+    first_non_nan_position = scores.index.get_loc(scores.first_valid_index())
+    assert first_non_nan_position >= rsi_first_defined_position
 
 
 def test_walk_forward_score_matches_a_full_screen_on_the_same_slice(reliance, cfg):

@@ -47,11 +47,13 @@ DEFAULT_SLIPPAGE_BPS = 10.0
 def burn_in_period(cfg: dict[str, Any]) -> int:
     """Bars needed before every signal in the blend has a defined value.
 
-    The slowest indicator in play sets the pace: SMA/EMA "slow" span, MACD
-    slow span, or either volume window, whichever asks for the most history.
+    The slowest indicator in play sets the pace: SMA/EMA "slow" span, RSI
+    period, MACD slow span, or either volume window, whichever asks for the
+    most history.
     """
     return max(
         cfg["trend"]["slow"],
+        cfg["momentum"]["rsi_period"],
         cfg["momentum"]["macd_slow"],
         cfg["volume"]["obv_window"],
         cfg["volume"]["z_window"],
