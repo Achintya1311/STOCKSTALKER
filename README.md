@@ -259,6 +259,45 @@ is considerably more expensive than the Day 7 numbers let on — read this as
 the honest version of the Day 7 finding, not a separate result. Full
 numbers for both tables, every run, in `outputs/backtest_<date>.{json,csv,md}`.
 
+### Day 85 — the same rule families, tested at scale in the lab
+
+The two findings above are a 3-name, in-sample monitor result — useful on
+its own small universe, but not a test. The same rule families (trend,
+momentum, reversal, breakout and open-interest signals, among others) are
+now evaluated properly in
+[`stockstalker-lab`](https://github.com/Achintya1311/stockstalker-lab): a
+213-stock NSE F&O universe, a market-line edge (hit rate over the base
+rate of the market itself rising or falling), stationary block-bootstrap
+95% intervals over dates, and a many-trials correction (Hansen's SPA test
+across every trial of a horizon/side, plus StepM and the model confidence
+set) so a result can't just be the best of many random-looking rules.
+Full numbers, every trial, every horizon and side:
+[`stockstalker-lab/reports/evidence_train.md`](https://github.com/Achintya1311/stockstalker-lab/blob/main/reports/evidence_train.md).
+
+On the 2015–2020 train split, that report's SPA test rejects "no rule
+beats the market line" for the day horizon on both sides (bearish and
+bullish). On the bearish day side it names several of the lab's own rule
+families StepM finds individually superior at the 10% level, including
+`e2a-day`, `d01c-day`, `a02-extreme-day-reversal-day` and
+`a09-gap-fade-day`, alongside several trend/momentum rules; on the
+bullish day side it names fewer, including `d01c-day` and
+`t04-connors-rsi2-day`. None of these are this repo's own screen or its
+signal set — the lab evaluates its own, separate rule catalog. On the
+week horizon, both sides fail to reject "no rule beats the market line":
+the report's own SPA p-values are not small and it names no rule as
+StepM-superior on either week side. The exact rule list, trial counts,
+edges and intervals live in the report itself, not copied here by hand,
+since the lab's own routine can re-run and update that report on a cadence
+this one doesn't track.
+
+**This is a train-split result, not a validated one.** The lab's own
+sealed/unsealed design holds 2023–Jul 2026 out until a version is formally
+unsealed; nothing above has been checked against unseen years, and a rule
+that survives the 2015–2020 trials could still fail there. No pick, score
+or hit rate is published by this repo or this section — the lab's own
+scoreboard, where one exists, is the only public directional output this
+portfolio carries (see `PLAN.md` rule 1).
+
 ## Limitations and what would make me wrong
 
 - The ticker universe is today's list. Names that delisted or were removed are absent, so any historical result carries survivorship bias. Stated rather than corrected.
