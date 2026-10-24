@@ -784,6 +784,9 @@ def write_tearsheet(
     lines = [
         f"# Tear sheet — {subject['ticker']} ({generated})",
         "",
+        "Educational research on historical data. Not investment advice. "
+        "Not a SEBI-registered research analyst.",
+        "",
         f"Close {subject['close']:,.2f} as of {subject['as_of']}. {score_line}, "
         f"ADV(20d) {subject['liquidity']['adv_20d']:,.0f}.",
         "",

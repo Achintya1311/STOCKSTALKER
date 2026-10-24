@@ -1,5 +1,7 @@
 # Tear sheet — GULFOILLUB (2026-10-18)
 
+Educational research on historical data. Not investment advice. Not a SEBI-registered research analyst.
+
 Close 1,077.30 as of 2026-10-09. Score 0.4237 (trend -0.159, momentum -0.022, volume -0.324), ADV(20d) 43,220.
 
 Technical signals describe how the price has behaved, not what the business is worth. This section reuses the screen's own scoring; the subject is not in `data/universe.txt` and this run does not add it there.

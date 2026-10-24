@@ -1,5 +1,7 @@
 # Tear sheet — CASTROLIND (2026-10-18)
 
+Educational research on historical data. Not investment advice. Not a SEBI-registered research analyst.
+
 Close 197.74 as of 2026-10-16. Score 0.5500 (trend +0.301, momentum -0.064, volume +0.009), ADV(20d) 3,544,071.
 
 Technical signals describe how the price has behaved, not what the business is worth. This section reuses the screen's own scoring; the subject is not in `data/universe.txt` and this run does not add it there.

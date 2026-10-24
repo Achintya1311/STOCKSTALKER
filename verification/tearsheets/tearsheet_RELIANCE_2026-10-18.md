@@ -1,5 +1,7 @@
 # Tear sheet — RELIANCE (2026-10-18)
 
+Educational research on historical data. Not investment advice. Not a SEBI-registered research analyst.
+
 Close 1,211.20 as of 2026-10-16. Score 0.4451 (trend -0.469, momentum +0.182, volume +0.056), ADV(20d) 14,315,407.
 
 Technical signals describe how the price has behaved, not what the business is worth. This section reuses the screen's own scoring; the subject is not in `data/universe.txt` and this run does not add it there.

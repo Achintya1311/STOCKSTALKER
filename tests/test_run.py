@@ -181,6 +181,25 @@ def test_write_tearsheet_contains_subject_and_peers(cfg, tmp_path):
     assert "Contract sections" in text
 
 
+def test_write_tearsheet_carries_the_disclaimer(tmp_path):
+    subject = {
+        "ticker": "NEWLISTING",
+        "as_of": "2026-10-23",
+        "close": 10.0,
+        "score": None,
+        "signals": None,
+        "history_reason": "not enough history for a score yet (10 bars, need 51)",
+        "liquidity": {"adv_20d": 0.0, "turnover_20d": 0.0},
+    }
+    path = tmp_path / "tearsheet.md"
+    run.write_tearsheet(subject, [], "2026-10-23", path)
+    text = path.read_text()
+    assert (
+        "Educational research on historical data. Not investment advice. "
+        "Not a SEBI-registered research analyst." in text
+    )
+
+
 def test_cli_end_to_end_writes_tearsheet(tmp_path, capsys):
     rc = run.main(
         [
