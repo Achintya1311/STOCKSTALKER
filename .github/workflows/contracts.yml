@@ -1,0 +1,79 @@
+name: Cross-repo contracts
+
+# The front door reads contracts from five sibling repos. ci.yml checks out
+# only this repo, so every tests/test_live_*_contract_smoke.py skips there
+# (hub CRITIQUES.md P70). This job checks the siblings out next to it and
+# runs those smoke tests for real. The siblings change on their own
+# schedules (daily captures, refreshed fixtures), so it also runs daily.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "40 13 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    env:
+      STOCKSTALKER_IV_SURFACE_ROOT: ${{ github.workspace }}/siblings/implied-vol-surface
+      STOCKSTALKER_RISK_LAB_ROOT: ${{ github.workspace }}/siblings/monte-carlo-risk-lab
+      STOCKSTALKER_FACTOR_MODEL_ROOT: ${{ github.workspace }}/siblings/fama-french-factor-model
+      STOCKSTALKER_SENTIMENT_ROOT: ${{ github.workspace }}/siblings/headline-sentiment-vs-price
+      STOCKSTALKER_REVERSE_DCF_ROOT: ${{ github.workspace }}/siblings/reverse-dcf-engine
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Achintya1311/implied-vol-surface
+          path: siblings/implied-vol-surface
+      - uses: actions/checkout@v7
+        with:
+          repository: Achintya1311/monte-carlo-risk-lab
+          path: siblings/monte-carlo-risk-lab
+      - uses: actions/checkout@v7
+        with:
+          repository: Achintya1311/fama-french-factor-model
+          path: siblings/fama-french-factor-model
+      - uses: actions/checkout@v7
+        with:
+          repository: Achintya1311/headline-sentiment-vs-price
+          path: siblings/headline-sentiment-vs-price
+      - uses: actions/checkout@v7
+        with:
+          repository: Achintya1311/reverse-dcf-engine
+          path: siblings/reverse-dcf-engine
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        # The smoke tests shell out to each sibling through `uv run`.
+        run: pip install -e ".[dev]" uv
+
+      - name: Siblings must resolve
+        # A missing sibling would only make its smoke test skip, which reads
+        # as green. Fail here instead, so a skip below can only mean "no
+        # network" or "no capture", never "not checked out".
+        run: |
+          python -c "
+          from stockstalker import live_contracts as lc
+          roots = {
+              'vol': lc.resolve_iv_surface_root(),
+              'risk': lc.resolve_risk_lab_root(),
+              'factor': lc.resolve_factor_model_root(),
+              'sentiment': lc.resolve_sentiment_root(),
+              'valuation': lc.resolve_reverse_dcf_root(),
+          }
+          missing = {k: str(v) for k, v in roots.items() if not v.is_dir()}
+          assert not missing, f'siblings not checked out: {missing}'
+          assert lc.raw_capture_exists('RELIANCE', roots['vol']), 'no raw RELIANCE capture in implied-vol-surface'
+          print('siblings resolved:', {k: str(v) for k, v in roots.items()})
+          "
+
+      - name: Contract smoke tests
+        run: pytest -q -rs tests/test_live_factor_contract_smoke.py tests/test_live_risk_contract_smoke.py tests/test_live_sentiment_contract_smoke.py tests/test_live_valuation_contract_smoke.py tests/test_live_vol_contract_smoke.py
