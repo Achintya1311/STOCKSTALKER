@@ -8,6 +8,24 @@ Educational research on historical data. Not investment advice. Not a SEBI-regis
 **Chart:** `outputs/tearsheet_GULFOILLUB_<date>.md` lists the three charts `stockstalker.run` writes to `outputs/` — GULFOILLUB vs. peers rebased to 100, drawdown from peak, rolling 1y volatility.
 **Reproduce:** `python -m stockstalker.backtest --offline` (the finding above) or `python -m stockstalker.run --ticker GULFOILLUB --offline` (the front door below).
 
+**One name, three things.** "Stock Stalker" covers three separate pieces of work:
+
+| Part | Scope | Status |
+|---|---|---|
+| **Screen** | 3 names (RELIANCE, TATACHEM, CROMPTON); 1 of 3 held up against random same-size exposure | done; a small monitor, not a universe screen |
+| **Tear sheet** | any NSE stock, one command (`python -m stockstalker.run --ticker <TICKER> --live`) | done (v0.9); verified end to end on 3 names |
+| **Lab** | separate repo, [`stockstalker-lab`](https://github.com/Achintya1311/stockstalker-lab), 213-stock NSE F&O universe | testing phase; train-split results only |
+
+**Which stock each module was verified on.**
+
+| Module | Verified on | Why that stock |
+|---|---|---|
+| Screen and backtest | RELIANCE, TATACHEM, CROMPTON | the screen's own fixture universe (`data/universe.txt`) |
+| Price-only sections (`risk`, `factor`, `vol`, `sizing`) | RELIANCE (`risk` and `factor` also GULFOILLUB) | they need only prices, and RELIANCE is the one name in both the screen universe and those satellites' fixtures |
+| Fundamentals (`fundamentals`) and the full 10-year `valuation` | GULFOILLUB | they need ten years of annual-report data entered by hand, which exists for this one name only; other tickers get a shorter reverse DCF run live from 4-5 years of yfinance financials (see the RELIANCE and CASTROLIND tear sheets in `verification/tearsheets/`) |
+
+The split follows the data: price history is free for any NSE stock, but driver-based fundamentals were built by hand for a single company, so the fundamentals section stays GULFOILLUB-only rather than showing made-up numbers for others.
+
 The front door to a nine-repo equity research pipeline. One command builds
 a tear sheet for any NSE stock —
 
