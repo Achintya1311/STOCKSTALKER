@@ -20,6 +20,11 @@ test_live_risk_contract_smoke.py already uses:
 
 from __future__ import annotations
 
+import json
+import shutil
+import subprocess
+from pathlib import Path
+
 import pytest
 
 from stockstalker import run
@@ -49,14 +54,32 @@ def test_build_live_vol_section_against_the_real_sibling_checkout(tmp_path):
     assert section["available"] is True
     assert section["source"] == "implied-vol-surface (live)"
     data = section["data"]
-    # RELIANCE's own real raw v3 captures (3 expiries, captured 2026-10-16
-    # per P12) solved through volsurface.history --provider nse_raw --
-    # real numbers, not a stub, confirmed by hand against the same command
-    # run directly in implied-vol-surface this same day (Day 24).
-    assert data["atm_iv_30d"] == pytest.approx(0.24847844072190686, rel=1e-6)
-    assert data["skew_25d"] == pytest.approx(-0.004580337234500909, rel=1e-6)
-    assert data["term_slope"] == pytest.approx(-0.01363522714076379, rel=1e-6)
-    assert data["iv_rank_1y"] is None
+    # D27: implied-vol-surface's raw RELIANCE corpus gains a capture batch
+    # every weekday (D25/Day 76), so the latest capture's numbers move and
+    # can't be pinned here. Instead run the same volsurface.history command
+    # directly in the same sibling checkout, at test time, and check the
+    # front door carried its real output through unchanged.
+    expected = _sibling_vol_contract(iv_surface_root, tmp_path / "expected")
+    for key in ("atm_iv_30d", "skew_25d", "term_slope"):
+        assert data[key] == pytest.approx(expected[key], rel=1e-9), key
+    assert data["iv_rank_1y"] == expected["iv_rank_1y"]
+    assert 0.0 < data["atm_iv_30d"] < 2.0
 
     contract_path = tmp_path / "contracts" / "RELIANCE" / "vol.json"
     assert contract_path.exists()
+
+
+def _sibling_vol_contract(iv_surface_root: Path, out_dir: Path) -> dict:
+    """The vol contract implied-vol-surface itself writes for RELIANCE right now."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    contract = out_dir / "vol.json"
+    subprocess.run(
+        [
+            shutil.which("uv"), "run", "--with-requirements", "requirements.txt",
+            "python", "-m", "volsurface.history",
+            "--underlying", "RELIANCE", "--provider", "nse_raw",
+            "--contract", str(contract), "--out", str(out_dir / "history.json"),
+        ],
+        cwd=iv_surface_root, capture_output=True, text=True, check=True,
+    )
+    return json.loads(contract.read_text())["vol"]
