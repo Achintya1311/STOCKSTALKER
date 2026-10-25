@@ -16,6 +16,13 @@ Educational research on historical data. Not investment advice. Not a SEBI-regis
 | **Tear sheet** | any NSE stock, one command (`python -m stockstalker.run --ticker <TICKER> --live`) | done (v0.9); verified end to end on 3 names |
 | **Lab** | separate repo, [`stockstalker-lab`](https://github.com/Achintya1311/stockstalker-lab), 213-stock NSE F&O universe | testing phase; train-split results only |
 
+**Evidence** (lab reports as of 25 Oct 2026, 2015-2020 train split only; the lab re-runs them, so the linked files win over these numbers; nothing here has been checked on unseen years yet):
+
+- [`evidence_train.md`](https://github.com/Achintya1311/stockstalker-lab/blob/main/reports/evidence_train.md): some one-day rules beat the market line even after correcting for how many rules were tried (SPA p = 0.000 bearish, 0.003 bullish). On the one-week horizon none did (p = 0.195 and 0.528).
+- [`train_leaderboard.md`](https://github.com/Achintya1311/stockstalker-lab/blob/main/reports/train_leaderboard.md): every trial ranked; 7 of 108 clear the many-trials bar (t ≥ 4.21), all on the one-day horizon.
+- [`champion_v1_train.md`](https://github.com/Achintya1311/stockstalker-lab/blob/main/reports/champion_v1_train.md): this repo's own blended screen score, run on the full F&O universe, shows no edge: within 0.74 points of the market line on all four horizon/side tables, with a negative move after costs on all four.
+- [`corporate_actions_check.md`](https://github.com/Achintya1311/stockstalker-lab/blob/main/reports/corporate_actions_check.md): data check. The detector finds 3 candidate events in the dataset; 1 is confirmed, 1 is plausible and 1 is unexplained.
+
 **Which stock each module was verified on.**
 
 | Module | Verified on | Why that stock |
