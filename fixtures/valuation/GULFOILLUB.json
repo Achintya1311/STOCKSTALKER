@@ -6,12 +6,13 @@
     "breakeven_growth": null,
     "implied_reinvestment_terminal": null,
     "median_roic": 0.25887134520602134,
-    "terminal_roic": 0.11610477172909299,
+    "terminal_roic": 0.11756184381039692,
     "price_reachable": false,
-    "max_achievable_price_10y": 914.5482826509398,
-    "growth_at_max_achievable_price_10y": 0.11609717839827303,
+    "max_achievable_price_10y": 904.9835316241711,
+    "growth_at_max_achievable_price_10y": 0.11755424179417283,
     "breakeven_reachable": false,
-    "max_achievable_price_perpetual": 715.5156570453562,
-    "growth_at_max_achievable_price_perpetual": 0.11609717839827302
+    "max_achievable_price_perpetual": 708.4122816087266,
+    "growth_at_max_achievable_price_perpetual": 0.11755424179417283,
+    "financials_source": "hand-entered, 10-year (GULFOILLUB base case)"
   }
 }

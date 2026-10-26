@@ -151,3 +151,13 @@ def test_main_defaults_out_to_overwriting_the_screen_in_place(screen, tmp_path):
     gated = json.loads(screen_path.read_text())
     by_ticker = {c["ticker"]: c for c in gated["candidates"]}
     assert by_ticker["TATACHEM.NS"]["valuation"] == SYNTHETIC_VALUATION
+
+
+def test_committed_fixture_matches_reverse_dcf_engines_post_refresh_output():
+    # D30: regenerated after reverse-dcf-engine's 25 Oct WACC refresh (11.61% -> 11.76%),
+    # from `python -m reverse_dcf.solve --contract` on that repo's main.
+    loaded = valuation.load_contract(GULFOILLUB_CONTRACT)
+    assert round(loaded["max_achievable_price_10y"], 2) == 904.98
+    assert round(loaded["max_achievable_price_perpetual"], 2) == 708.41
+    assert round(loaded["terminal_roic"], 5) == 0.11756
+    assert loaded["financials_source"] == "hand-entered, 10-year (GULFOILLUB base case)"

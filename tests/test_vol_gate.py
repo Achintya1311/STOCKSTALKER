@@ -37,7 +37,7 @@ def screen(cfg):
 def test_load_contract_reads_the_real_implied_vol_surface_fixture():
     loaded = vol.load_contract(RELIANCE_CONTRACT)
     assert set(loaded) == vol.REQUIRED_VOL_KEYS
-    assert loaded["atm_iv_30d"] == pytest.approx(0.21501034475303749)
+    assert loaded["atm_iv_30d"] == pytest.approx(0.2801038061895711)
     # Honest gap, not a bug: no real trailing-year history exists yet
     # (see implied-vol-surface's README Limitations).
     assert loaded["iv_rank_1y"] is None
@@ -138,7 +138,7 @@ def test_main_against_the_real_reliance_fixture_reports_a_genuine_match(screen, 
 
     gated = json.loads(screen_path.read_text())
     by_ticker = {c["ticker"]: c for c in gated["candidates"]}
-    assert by_ticker["RELIANCE.NS"]["vol"]["atm_iv_30d"] == pytest.approx(0.21501034475303749)
+    assert by_ticker["RELIANCE.NS"]["vol"]["atm_iv_30d"] == pytest.approx(0.2801038061895711)
     assert by_ticker["RELIANCE.NS"]["vol"]["iv_rank_1y"] is None
     for ticker, candidate in by_ticker.items():
         if ticker != "RELIANCE.NS":
@@ -156,3 +156,12 @@ def test_main_defaults_out_to_overwriting_the_screen_in_place(screen, tmp_path):
     gated = json.loads(screen_path.read_text())
     by_ticker = {c["ticker"]: c for c in gated["candidates"]}
     assert by_ticker["TATACHEM.NS"]["vol"] == SYNTHETIC_VOL
+
+
+def test_committed_fixture_comes_from_a_real_nse_capture():
+    # D39: the 28 Sep fixture came from implied-vol-surface's synthetic chain
+    # (atm 0.2150, term slope -0.0199). Regenerated from the real 2026-10-24
+    # capture (data_date 2026-10-23, source nse).
+    loaded = vol.load_contract(RELIANCE_CONTRACT)
+    assert loaded["skew_25d"] == pytest.approx(0.020981022241451375)
+    assert loaded["term_slope"] == pytest.approx(0.11364992822803338)

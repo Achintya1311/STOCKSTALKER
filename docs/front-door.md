@@ -47,6 +47,12 @@ default) prints, in this order:
    confirms GULFOILLUB's SYMBOL is absent from it — a checked fact now,
    not the earlier "unverified" hedge from a blocked network response —
    see Limitations for both.
+
+   For an F&O ticker such as RELIANCE, `vol` reads `fixtures/vol/RELIANCE.json`.
+   Since 26 Oct 2026 (hub CRITIQUES.md D39) that file comes from implied-vol-surface's
+   real NSE capture of 2026-10-24 (data date 2026-10-23, 218 quotes) via
+   `python -m volsurface.history --underlying RELIANCE --chain-file fixtures/chains/live/RELIANCE/2026-10-24.json --as-of 2026-10-24 --contract ...`.
+   The earlier copy (28 Sep 2026) came from that repo's hand-assembled synthetic chain.
 4. **Charts to `outputs/`** — three PNGs: GULFOILLUB vs. its three peers
    rebased to 100, drawdown from peak, and rolling 1-year annualised
    volatility. Pass `--no-charts` to skip them.

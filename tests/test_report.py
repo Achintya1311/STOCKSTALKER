@@ -366,7 +366,7 @@ def test_main_applies_the_real_reliance_vol_contract_and_reports_a_match(tmp_pat
     # detects (narrow in a captured, non-tty test run) -- assert on fragments that
     # survive either way, same approach the risk/sizing gates' tests above use.
     assert "ATM" in out
-    assert "21.50%" in out
+    assert "28.01%" in out
 
 
 def test_main_requires_both_sentiment_flags_together(tmp_path):
