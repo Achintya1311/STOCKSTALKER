@@ -3,6 +3,7 @@ end against the committed GULFOILLUB / lubricant-peer fixtures."""
 
 import io
 import json
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -348,7 +349,11 @@ def test_load_fo_underlyings_contains_known_fo_names_not_the_lubricant_peers():
 
 
 def test_fo_mktlots_list_date_reads_the_committed_metadata():
-    assert run.fo_mktlots_list_date() == "2026-09-29"
+    # D42: fetch-fo-mktlots.yml refreshes the list monthly, so read the date from the
+    # committed metadata rather than pinning one month's value.
+    meta = json.loads(run.FO_MKTLOTS_META_PATH.read_text())
+    assert run.fo_mktlots_list_date() == meta["list_last_modified"]
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", run.fo_mktlots_list_date())
 
 
 def test_build_contract_section_reads_real_fixture_for_subject_sentiment():

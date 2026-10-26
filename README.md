@@ -46,7 +46,7 @@ The split follows the data: price history is free for any NSE stock, but driver-
 ```bash
 uv venv && source .venv/bin/activate
 uv pip install -e . pytest
-pytest                                                   # 447 passed, 2 skipped on 26 Oct 2026
+pytest                                                   # 470 passed, 2 skipped on 26 Oct 2026
 python -m stockstalker.backtest --offline                # the screen findings (Days 7, 8, 58)
 python -m stockstalker.run --ticker GULFOILLUB --offline # the front door from committed fixtures
 ```
@@ -132,7 +132,19 @@ Every source is free. This project never requires a paid tier, a subscription, o
 
 - **yfinance** — daily OHLCV for NSE tickers, no key required. The only provider any default or `--live` code path actually selects today
 - **Alpha Vantage** — implemented and tested (`AlphaVantageProvider`), free tier, 25 requests/day, key read from `.env` and never committed, but not wired into any default path, CLI flag, or workflow yet — nothing currently runs `--provider alphavantage`
-- **Committed fixtures** — two years of daily bars for three NSE names, so everything runs offline
+- **Committed price fixtures** — daily bars for eight NSE names, so everything runs offline. Fetched with yfinance `auto_adjust=True` (`stockstalker/data/providers.py`), so older bars are back-adjusted for splits and dividends and will not match the prices printed on those days. Spans, from the files themselves (`tests/test_readme_fixtures.py` checks this table against them):
+
+  | File | First bar | Last bar | Bars | Used by |
+  |---|---|---|---|---|
+  | `fixtures/ohlcv/RELIANCE_NS.csv` | 2024-09-04 | 2026-09-04 | 501 | screen and backtest |
+  | `fixtures/ohlcv/TATACHEM_NS.csv` | 2024-09-04 | 2026-09-04 | 501 | screen and backtest |
+  | `fixtures/ohlcv/CROMPTON_NS.csv` | 2024-09-04 | 2026-09-04 | 501 | screen and backtest |
+  | `fixtures/ohlcv/GULFOILLUB_NS.csv` | 2014-07-31 | 2026-10-09 | 3,007 | front door subject |
+  | `fixtures/ohlcv/CASTROLIND_NS.csv` | 2014-07-31 | 2026-10-09 | 3,007 | front door peer table |
+  | `fixtures/ohlcv/SOTL_NS.csv` | 2014-07-31 | 2026-10-09 | 3,007 | front door peer table |
+  | `fixtures/ohlcv/GANDHAR_NS.csv` | 2023-11-30 | 2026-10-09 | 707 | front door peer table (listed 2023-11-30) |
+  | `fixtures/ohlcv/TATAELXSI_NS.csv` | 2024-10-16 | 2026-10-16 | 497 | live risk-contract smoke test |
+- **NSE F&O lot list** — `fixtures/fo_mktlots.csv`, refreshed monthly by `.github/workflows/fetch-fo-mktlots.yml` (`python -m stockstalker.fo_mktlots`); `fixtures/fo_mktlots_meta.json` records the fetch date and the list's own date
 - **Sibling contract fixtures** — `fixtures/PROVENANCE.json` names the repo, command and input behind each file under `fixtures/{risk,factor,vol,sentiment,sizing,valuation,fundamentals}/`; `tests/test_fixture_provenance.py` reruns the deterministic ones against the sibling checkouts (daily in `contracts.yml`) and fails if a committed copy no longer matches
 
 ## How to run

@@ -1,0 +1,52 @@
+name: Refresh F&O lot list
+
+# fixtures/fo_mktlots.csv decides whether the front door says a ticker has
+# no listed options (hub CRITIQUES.md D2, D42). NSE republishes it monthly and
+# blocks the interactive sandbox, but GitHub's hosted runners reach it (D25).
+# 06:10 UTC on the 2nd = 11:40 IST, after NSE's month-start update.
+on:
+  schedule:
+    - cron: "10 6 2 * *"
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/fetch-fo-mktlots.yml
+      - stockstalker/fo_mktlots.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Fetch NSE's lot-size list
+        # Refuses to write anything if NSE returns an error page or a short list.
+        run: python -m stockstalker.fo_mktlots
+
+      - name: Commit only if the list itself changed
+        run: |
+          if git diff --quiet -- fixtures/fo_mktlots.csv; then
+            echo "fo_mktlots.csv unchanged; not committing a date-only meta change."
+            git checkout -- fixtures/fo_mktlots_meta.json
+            exit 0
+          fi
+          # The GITHUB_TOKEN push below triggers no CI, so test here first.
+          pytest -q
+          git config user.name "Achintya1311"
+          git config user.email "67464985+Achintya1311@users.noreply.github.com"
+          git add fixtures/fo_mktlots.csv fixtures/fo_mktlots_meta.json
+          git commit -m "data: refresh NSE F&O lot list ($(date -u +%Y-%m-%d))"
+          git pull --rebase origin main
+          git push origin HEAD:main
