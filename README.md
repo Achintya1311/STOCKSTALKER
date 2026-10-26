@@ -46,7 +46,7 @@ The split follows the data: price history is free for any NSE stock, but driver-
 ```bash
 uv venv && source .venv/bin/activate
 uv pip install -e . pytest
-pytest                                                   # 470 passed, 2 skipped on 26 Oct 2026
+pytest                                                   # 472 passed, 2 skipped on 26 Oct 2026
 python -m stockstalker.backtest --offline                # the screen findings (Days 7, 8, 58)
 python -m stockstalker.run --ticker GULFOILLUB --offline # the front door from committed fixtures
 ```
@@ -155,7 +155,7 @@ uv pip install -r requirements.txt
 pytest
 ```
 
-Offline against fixtures is the default path, not the fallback. Live fetching is opt-in via `--live` and needs a key in `.env` (see `.env.example`).
+Offline against fixtures is the default path, not the fallback. Live fetching is opt-in via `--live` and uses yfinance, which takes no API key. `.env.example` is only for the Alpha Vantage provider, which no default path or CLI flag uses yet (see Data sources).
 
 ## Pipeline audit
 
