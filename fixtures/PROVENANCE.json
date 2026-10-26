@@ -1,0 +1,314 @@
+{
+  "_about": "Where each sibling-contract fixture came from (hub CRITIQUES.md D40). 'command' runs from the sibling repo's root, with {out} as the output path; 'generated' is the STOCKSTALKER commit that last wrote the file; 'reproduced' is the last date and sibling commit a fresh run matched it. tests/test_fixture_provenance.py checks every fixture has an entry and, where sibling checkouts exist, that deterministic ones still match.",
+  "fixtures": {
+    "risk/RELIANCE.json": {
+      "repo": "monte-carlo-risk-lab",
+      "env_var": "STOCKSTALKER_RISK_LAB_ROOT",
+      "command": [
+        [
+          "python",
+          "-m",
+          "mcsim.portfolio",
+          "--contract",
+          "{out}"
+        ]
+      ],
+      "inputs": [
+        "fixtures/ohlcv/RELIANCE_NS.csv"
+      ],
+      "generated": {
+        "stockstalker_commit": "05c1104",
+        "date": "2026-10-18"
+      },
+      "deterministic": true,
+      "reproduced": {
+        "date": "2026-10-26",
+        "sibling_commit": "887088b"
+      },
+      "exit_codes": [
+        0,
+        1
+      ],
+      "exit_codes_note": "mcsim.portfolio exits 1 when the Kupiec test rejects a VaR level, after writing the contract; both fixtures' in-sample VaR is rejected at 99%."
+    },
+    "risk/GULFOILLUB.json": {
+      "repo": "monte-carlo-risk-lab",
+      "env_var": "STOCKSTALKER_RISK_LAB_ROOT",
+      "command": [
+        [
+          "python",
+          "-m",
+          "mcsim.portfolio",
+          "--fixture",
+          "fixtures/ohlcv/GULFOILLUB_NS.csv",
+          "--contract",
+          "{out}"
+        ],
+        [
+          "python",
+          "-m",
+          "mcsim.oosvar",
+          "--fixture",
+          "fixtures/ohlcv/GULFOILLUB_NS.csv",
+          "--contract",
+          "{out}"
+        ]
+      ],
+      "inputs": [
+        "fixtures/ohlcv/GULFOILLUB_NS.csv"
+      ],
+      "generated": {
+        "stockstalker_commit": "ce24d9f",
+        "date": "2026-10-26"
+      },
+      "deterministic": true,
+      "reproduced": {
+        "date": "2026-10-26",
+        "sibling_commit": "887088b"
+      },
+      "exit_codes": [
+        0,
+        1
+      ],
+      "exit_codes_note": "mcsim.portfolio exits 1 when the Kupiec test rejects a VaR level, after writing the contract; both fixtures' in-sample VaR is rejected at 99%."
+    },
+    "factor/GULFOILLUB.json": {
+      "repo": "fama-french-factor-model",
+      "env_var": "STOCKSTALKER_FACTOR_MODEL_ROOT",
+      "command": [
+        [
+          "python",
+          "-m",
+          "factors.gulfoillub",
+          "--model",
+          "ff3wml",
+          "--contract",
+          "{out}"
+        ]
+      ],
+      "inputs": [
+        "fixtures/stockstalker/ohlcv/GULFOILLUB_NS.csv",
+        "fixtures/iima/"
+      ],
+      "generated": {
+        "stockstalker_commit": "9484f75",
+        "date": "2026-10-12"
+      },
+      "deterministic": true,
+      "reproduced": {
+        "date": "2026-10-26",
+        "sibling_commit": "a4fd44c"
+      }
+    },
+    "factor/RELIANCE.json": {
+      "repo": "fama-french-factor-model",
+      "env_var": "STOCKSTALKER_FACTOR_MODEL_ROOT",
+      "command": [
+        [
+          "python",
+          "-m",
+          "factors.screen_check",
+          "--model",
+          "ff5mom",
+          "--contract",
+          "{out}",
+          "--contract-ticker",
+          "RELIANCE.NS"
+        ]
+      ],
+      "inputs": [
+        "fixtures/stockstalker/screen_2026-09-20.json",
+        "fixtures/ken_french/"
+      ],
+      "generated": {
+        "stockstalker_commit": "c006b3e",
+        "date": "2026-09-22"
+      },
+      "deterministic": true,
+      "reproduced": {
+        "date": "2026-10-26",
+        "sibling_commit": "a4fd44c"
+      }
+    },
+    "vol/RELIANCE.json": {
+      "repo": "implied-vol-surface",
+      "env_var": "STOCKSTALKER_IV_SURFACE_ROOT",
+      "command": [
+        [
+          "python",
+          "-m",
+          "volsurface.history",
+          "--underlying",
+          "RELIANCE",
+          "--chain-file",
+          "fixtures/chains/live/RELIANCE/2026-10-24.json",
+          "--as-of",
+          "2026-10-24",
+          "--contract",
+          "{out}"
+        ]
+      ],
+      "inputs": [
+        "fixtures/chains/live/RELIANCE/2026-10-24.json (real NSE capture, data_date 2026-10-23)"
+      ],
+      "generated": {
+        "stockstalker_commit": "1c93ba1",
+        "date": "2026-10-26"
+      },
+      "deterministic": true,
+      "writes_side_files": true,
+      "reproduced": {
+        "date": "2026-10-26",
+        "sibling_commit": "fb1f310"
+      }
+    },
+    "valuation/GULFOILLUB.json": {
+      "repo": "reverse-dcf-engine",
+      "env_var": "STOCKSTALKER_REVERSE_DCF_ROOT",
+      "command": [
+        [
+          "python",
+          "-m",
+          "reverse_dcf.solve",
+          "--contract",
+          "{out}"
+        ]
+      ],
+      "inputs": [
+        "data/GULFOILLUB/financials.csv",
+        "fixtures/market/",
+        "fixtures/wacc/"
+      ],
+      "generated": {
+        "stockstalker_commit": "1c93ba1",
+        "date": "2026-10-26"
+      },
+      "deterministic": true,
+      "note": "Changes whenever reverse-dcf-engine's price (weekly) or WACC (monthly) workflows commit new fixtures; a drift failure then means: regenerate.",
+      "reproduced": {
+        "date": "2026-10-26",
+        "sibling_commit": "f371a5c"
+      }
+    },
+    "fundamentals/GULFOILLUB.json": {
+      "repo": "three-statement-model",
+      "env_var": "STOCKSTALKER_THREE_STATEMENT_ROOT",
+      "command": [
+        [
+          "python",
+          "-m",
+          "model.statements",
+          "--ticker",
+          "GULFOILLUB",
+          "--contract",
+          "{out}"
+        ]
+      ],
+      "inputs": [
+        "data/GULFOILLUB/ (hand-entered annual reports)"
+      ],
+      "generated": {
+        "stockstalker_commit": "81b31ed",
+        "date": "2026-10-11"
+      },
+      "deterministic": true,
+      "reproduced": {
+        "date": "2026-10-26",
+        "sibling_commit": "f3c0ce4"
+      }
+    },
+    "sizing/RELIANCE.json": {
+      "repo": "markowitz-portfolio-optimizer",
+      "env_var": "STOCKSTALKER_MARKOWITZ_ROOT",
+      "command": [
+        [
+          "python",
+          "-m",
+          "optimizer.sizing",
+          "--tickers",
+          "RELIANCE.NS,TATACHEM.NS,CROMPTON.NS",
+          "--sector-cap",
+          "0.5",
+          "--contract",
+          "{out}",
+          "--contract-ticker",
+          "RELIANCE.NS"
+        ]
+      ],
+      "inputs": [
+        "fixtures/ohlcv/ (RELIANCE, TATACHEM, CROMPTON)"
+      ],
+      "generated": {
+        "stockstalker_commit": "3160faa",
+        "date": "2026-09-25"
+      },
+      "deterministic": true,
+      "reproduced": {
+        "date": "2026-10-26",
+        "sibling_commit": "aa18451"
+      }
+    },
+    "sentiment/GULFOILLUB.json": {
+      "repo": "headline-sentiment-vs-price",
+      "env_var": "STOCKSTALKER_SENTIMENT_ROOT",
+      "command": [
+        [
+          "python",
+          "-m",
+          "sentiment.contract",
+          "--ticker",
+          "GULFOILLUB.NS",
+          "--out",
+          "{out}"
+        ]
+      ],
+      "inputs": [
+        "the headline corpus as of 2026-10-12"
+      ],
+      "generated": {
+        "stockstalker_commit": "f8a0b20",
+        "date": "2026-10-12"
+      },
+      "deterministic": false,
+      "why_not_checked": "The headline corpus grows daily (collect-headlines.yml), so a fresh run is expected to differ; this is a dated snapshot."
+    },
+    "sentiment/INFY.json": {
+      "repo": "headline-sentiment-vs-price",
+      "env_var": "STOCKSTALKER_SENTIMENT_ROOT",
+      "command": [
+        [
+          "python",
+          "-m",
+          "sentiment.contract",
+          "--ticker",
+          "INFY.NS",
+          "--out",
+          "{out}"
+        ]
+      ],
+      "inputs": [
+        "the headline corpus as of 2026-10-22"
+      ],
+      "generated": {
+        "stockstalker_commit": "1c37b9b",
+        "date": "2026-10-22"
+      },
+      "deterministic": false,
+      "why_not_checked": "The headline corpus grows daily (collect-headlines.yml), so a fresh run is expected to differ; this is a dated snapshot."
+    },
+    "sentiment/FORTIS.json": {
+      "repo": "headline-sentiment-vs-price",
+      "env_var": "STOCKSTALKER_SENTIMENT_ROOT",
+      "command": [],
+      "inputs": [
+        "unknown"
+      ],
+      "generated": {
+        "stockstalker_commit": "b542ec2",
+        "date": "2026-10-11"
+      },
+      "deterministic": false,
+      "why_not_checked": "Origin not recorded: the commit says it was recovered from parallel v0.5 runs. It backs tests/test_sentiment_gate.py's no-match case only, not any tear sheet."
+    }
+  }
+}

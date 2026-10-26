@@ -22,6 +22,9 @@ jobs:
       STOCKSTALKER_FACTOR_MODEL_ROOT: ${{ github.workspace }}/siblings/fama-french-factor-model
       STOCKSTALKER_SENTIMENT_ROOT: ${{ github.workspace }}/siblings/headline-sentiment-vs-price
       STOCKSTALKER_REVERSE_DCF_ROOT: ${{ github.workspace }}/siblings/reverse-dcf-engine
+      # D40: fixtures/PROVENANCE.json also names these two.
+      STOCKSTALKER_THREE_STATEMENT_ROOT: ${{ github.workspace }}/siblings/three-statement-model
+      STOCKSTALKER_MARKOWITZ_ROOT: ${{ github.workspace }}/siblings/markowitz-portfolio-optimizer
     steps:
       - uses: actions/checkout@v7
 
@@ -45,6 +48,14 @@ jobs:
         with:
           repository: Achintya1311/reverse-dcf-engine
           path: siblings/reverse-dcf-engine
+      - uses: actions/checkout@v7
+        with:
+          repository: Achintya1311/three-statement-model
+          path: siblings/three-statement-model
+      - uses: actions/checkout@v7
+        with:
+          repository: Achintya1311/markowitz-portfolio-optimizer
+          path: siblings/markowitz-portfolio-optimizer
 
       - uses: actions/setup-python@v7
         with:
@@ -74,6 +85,13 @@ jobs:
           assert lc.raw_capture_exists('RELIANCE', roots['vol']), 'no raw RELIANCE capture in implied-vol-surface'
           print('siblings resolved:', {k: str(v) for k, v in roots.items()})
           "
+          test -f "$STOCKSTALKER_THREE_STATEMENT_ROOT/pyproject.toml"
+          test -f "$STOCKSTALKER_MARKOWITZ_ROOT/pyproject.toml"
 
       - name: Contract smoke tests
         run: pytest -q -rs tests/test_live_factor_contract_smoke.py tests/test_live_risk_contract_smoke.py tests/test_live_sentiment_contract_smoke.py tests/test_live_valuation_contract_smoke.py tests/test_live_vol_contract_smoke.py
+
+      - name: Committed fixtures still match their siblings (D40)
+        # Reruns each deterministic command in fixtures/PROVENANCE.json. A failure
+        # means a sibling's output moved: regenerate the fixture, don't loosen this.
+        run: pytest -q -rs tests/test_fixture_provenance.py

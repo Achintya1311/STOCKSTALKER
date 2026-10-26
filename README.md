@@ -133,6 +133,7 @@ Every source is free. This project never requires a paid tier, a subscription, o
 - **yfinance** — daily OHLCV for NSE tickers, no key required. The only provider any default or `--live` code path actually selects today
 - **Alpha Vantage** — implemented and tested (`AlphaVantageProvider`), free tier, 25 requests/day, key read from `.env` and never committed, but not wired into any default path, CLI flag, or workflow yet — nothing currently runs `--provider alphavantage`
 - **Committed fixtures** — two years of daily bars for three NSE names, so everything runs offline
+- **Sibling contract fixtures** — `fixtures/PROVENANCE.json` names the repo, command and input behind each file under `fixtures/{risk,factor,vol,sentiment,sizing,valuation,fundamentals}/`; `tests/test_fixture_provenance.py` reruns the deterministic ones against the sibling checkouts (daily in `contracts.yml`) and fails if a committed copy no longer matches
 
 ## How to run
 
