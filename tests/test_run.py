@@ -1359,3 +1359,44 @@ def test_valuation_note_without_basis_keys_keeps_the_old_source_note():
         "data": {"financials_source": "yfinance, consolidated, 4-5 years"},
     }
     assert run.contract_section_note(section, "X") == "financials source: yfinance, consolidated, 4-5 years"
+
+
+# -- Day 148 (R24, P97): contract rows carry a label, a unit and a horizon --
+
+
+def _gulfoillub_tearsheet(tmp_path):
+    rc = run.main(
+        [
+            "--ticker", "GULFOILLUB",
+            "--offline",
+            "--date", "2026-10-26",
+            "--output-dir", str(tmp_path),
+            "--no-charts",
+        ]
+    )
+    assert rc == 0
+    return (tmp_path / "tearsheet_GULFOILLUB_2026-10-26.md").read_text()
+
+
+def test_risk_rows_name_their_horizon_and_statistic(tmp_path):
+    text = _gulfoillub_tearsheet(tmp_path)
+    assert "| VaR 95%, 20-day, simulated (var_95) | -11.72% |" in text
+    assert "| Mean simulated 20-day max drawdown (max_dd_sim) | -8.61% |" in text
+    assert "| 1-day parametric VaR 95% backtest, Kupiec (kupiec_95) |" in text
+
+
+def test_valuation_rows_are_in_rupees_and_percent(tmp_path):
+    text = _gulfoillub_tearsheet(tmp_path)
+    assert "| EBIT margin, base year, held fixed: an input (implied_ebit_margin) | 13.37% |" in text
+    assert "| Highest price the model reaches, 10y, ₹/share (max_achievable_price_10y) | ₹904.98 |" in text
+    assert "| Price reachable at a constant 10y growth rate (price_reachable) | No |" in text
+    assert "+904.9835" not in text
+
+
+def test_fundamentals_ratio_prints_as_a_multiple(tmp_path):
+    text = _gulfoillub_tearsheet(tmp_path)
+    assert "(net_debt_ebitda_fy3) | -1.69x |" in text
+
+
+def test_unknown_contract_keys_render_unchanged():
+    assert run.contract_field("risk", "brand_new_key", 0.5, {}) == ("brand_new_key", "+0.5000")

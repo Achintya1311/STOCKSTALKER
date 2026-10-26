@@ -305,6 +305,105 @@ def _fmt_scalar(value: Any) -> str:
     return str(value)
 
 
+# Day 148 (R24, P97): a label, a unit and (for risk) the horizon for every
+# known contract key, shared by the terminal and Markdown tear sheets. The
+# contract key stays in brackets so a reader can find it in the JSON; keys
+# not listed here render exactly as before.
+_FIELD_LABELS: dict[str, dict[str, tuple[str, str]]] = {
+    "valuation": {
+        "implied_cagr": ("Implied revenue CAGR, 10y", "pct"),
+        "implied_ebit_margin": ("EBIT margin, base year, held fixed: an input", "pct"),
+        "implied_reinvestment": ("Implied reinvestment rate, year 1", "pct"),
+        "breakeven_growth": ("Perpetual breakeven growth", "pct"),
+        "implied_reinvestment_terminal": ("Implied reinvestment rate, terminal", "pct"),
+        "median_roic": ("Median ROIC, historical", "pct"),
+        "terminal_roic": ("Terminal ROIC", "pct"),
+        "price_reachable": ("Price reachable at a constant 10y growth rate", "yesno"),
+        "max_achievable_price_10y": ("Highest price the model reaches, 10y, ₹/share", "inr"),
+        "growth_at_max_achievable_price_10y": ("Growth at that 10y maximum", "pct"),
+        "breakeven_reachable": ("Price reachable at a constant perpetual growth rate", "yesno"),
+        "max_achievable_price_perpetual": ("Highest price the model reaches, perpetual, ₹/share", "inr"),
+        "growth_at_max_achievable_price_perpetual": ("Growth at that perpetual maximum", "pct"),
+        "financials_source": ("Financials source", "text"),
+        "price": ("Price solved against, ₹/share", "inr"),
+        "price_date": ("Price date", "text"),
+        "base_fiscal_year": ("Base fiscal year", "text"),
+    },
+    "fundamentals": {
+        "fy3_revenue_cagr": ("Revenue CAGR to FY3, forecast", "pct"),
+        "fy3_ebit_margin": ("EBIT margin, FY3, forecast", "pct"),
+        "net_debt_ebitda_fy3": ("Net debt / EBITDA, FY3, forecast; negative is net cash", "x"),
+        "balance_check": ("Balance check, every forecast year", "text"),
+        "base_fiscal_year": ("Last reported fiscal year", "text"),
+        "fy3_fiscal_year": ("FY3", "text"),
+    },
+    "risk": {
+        "var_95": ("VaR 95%, {h}-day, simulated", "pct"),
+        "cvar_95": ("CVaR 95%, {h}-day, simulated", "pct"),
+        "max_dd_sim": ("Mean simulated {h}-day max drawdown", "pct"),
+        "horizon_days": ("Horizon, trading days", "text"),
+        "var_99": ("VaR 99%, {h}-day, simulated", "pct"),
+        "cvar_99": ("CVaR 99%, {h}-day, simulated", "pct"),
+        "kupiec_95": ("1-day parametric VaR 95% backtest, Kupiec", "raw"),
+        "kupiec_99": ("1-day parametric VaR 99% backtest, Kupiec", "raw"),
+        "oos_var": ("Out-of-sample 1-day VaR backtest, pre-registered", "raw"),
+    },
+    "factor": {
+        "alpha_annual": ("Alpha, annualised", "pct"),
+        "alpha_t": ("Alpha t-stat", "num2"),
+        "significant": ("Alpha at the 5% level", "text"),
+        "loadings": ("Factor loadings", "raw"),
+        "factor_source": ("Factor set", "text"),
+        "window_start": ("First month regressed", "text"),
+        "window_end": ("Last month regressed", "text"),
+        "n_months": ("Months regressed", "text"),
+    },
+    "vol": {
+        "atm_iv_30d": ("ATM implied vol, 30-day", "pct"),
+        "skew_25d": ("25-delta skew, put IV minus call IV, vol points", "pts"),
+        "term_slope": ("Term slope, farthest minus nearest ATM IV, vol points", "pts"),
+        "iv_rank_1y": ("IV rank, 1 year", "pct"),
+    },
+    "sentiment": {
+        "score_7d": ("Headline sentiment score, 7 days", "num2"),
+        "headline_count_7d": ("Headlines, 7 days", "text"),
+        "model": ("Sentiment model", "text"),
+        "coverage": ("Headline coverage", "text"),
+    },
+}
+
+
+def _fmt_unit(value: Any, unit: str) -> str:
+    if value is None:
+        return "n/a"
+    if unit == "pct" and isinstance(value, (int, float)) and not isinstance(value, bool):
+        return f"{value:.2%}"
+    if unit == "inr" and isinstance(value, (int, float)) and not isinstance(value, bool):
+        return f"₹{value:,.2f}"
+    if unit == "x" and isinstance(value, (int, float)) and not isinstance(value, bool):
+        return f"{value:.2f}x"
+    if unit == "pts" and isinstance(value, (int, float)) and not isinstance(value, bool):
+        return f"{value * 100:+.2f}"
+    if unit == "num2" and isinstance(value, (int, float)) and not isinstance(value, bool):
+        return f"{value:+.2f}"
+    if unit == "yesno" and isinstance(value, bool):
+        return "Yes" if value else "No"
+    if unit == "text":
+        return str(value)
+    return _fmt_scalar(value)
+
+
+def contract_field(namespace: str, key: str, value: Any, data: dict[str, Any]) -> tuple[str, str]:
+    """(label, rendered value) for one contract field; unknown keys pass through unchanged."""
+    entry = _FIELD_LABELS.get(namespace, {}).get(key)
+    if entry is None:
+        return key, _fmt_scalar(value)
+    label, unit = entry
+    if "{h}" in label:
+        label = label.format(h=data.get("horizon_days", "?"))
+    return f"{label} ({key})", _fmt_unit(value, unit)
+
+
 # Day 5 (D2): NSE's own F&O lot-size snapshot -- whether a missing vol
 # fixture means "not an F&O underlying at all" (a real, checkable fact) or
 # just "not built yet" used to be undecidable from this sandbox, because
@@ -705,7 +804,7 @@ def render_contract_section(section: dict[str, Any]) -> Table | str:
     for key, value in section["data"].items():
         if section["namespace"] == "factor" and key == "significant":
             value = gate_factor.significance_label(value)
-        table.add_row(key, _fmt_scalar(value))
+        table.add_row(*contract_field(section["namespace"], key, value, section["data"]))
     return table
 
 
@@ -724,7 +823,8 @@ def contract_sections_markdown(sections: list[dict[str, Any]], ticker: str) -> l
             for key, value in section["data"].items():
                 if section["namespace"] == "factor" and key == "significant":
                     value = gate_factor.significance_label(value)
-                lines.append(f"| {key} | {_fmt_scalar(value)} |")
+                label, text = contract_field(section["namespace"], key, value, section["data"])
+                lines.append(f"| {label} | {text} |")
         note = contract_section_note(section, ticker)
         if note:
             lines.append("")
