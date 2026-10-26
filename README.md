@@ -46,7 +46,7 @@ The split follows the data: price history is free for any NSE stock, but driver-
 ```bash
 uv venv && source .venv/bin/activate
 uv pip install -e . pytest
-pytest                                                   # 487 passed, 2 skipped on 26 Oct 2026
+pytest                                                   # 489 passed, 2 skipped on 26 Oct 2026
 python -m stockstalker.backtest --offline                # the screen findings (Days 7, 8, 58)
 python -m stockstalker.run --ticker GULFOILLUB --offline # the front door from committed fixtures
 ```

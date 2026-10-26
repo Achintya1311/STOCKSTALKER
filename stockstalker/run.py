@@ -340,6 +340,11 @@ _FIELD_LABELS: dict[str, dict[str, tuple[str, str]]] = {
         "price": ("Price solved against, ₹/share", "inr"),
         "price_date": ("Price date", "text"),
         "base_fiscal_year": ("Base fiscal year", "text"),
+        "years_to_price_date": ("Base-year end to price date", "years"),
+        "price_reachable_dated": ("Price reachable, 10y, dated to the price date", "yesno"),
+        "implied_cagr_dated": ("Implied revenue CAGR, 10y, dated to the price date", "pct"),
+        "max_achievable_price_10y_dated": ("Highest price the model reaches, 10y, dated to the price date, ₹/share", "inr"),
+        "growth_at_max_achievable_price_10y_dated": ("Growth at that dated 10y maximum", "pct"),
     },
     "fundamentals": {
         "fy3_revenue_cagr": ("Revenue CAGR to FY3, forecast", "pct"),
@@ -396,6 +401,8 @@ def _fmt_unit(value: Any, unit: str) -> str:
         return f"{value:.2f}x"
     if unit == "pts" and isinstance(value, (int, float)) and not isinstance(value, bool):
         return f"{value * 100:+.2f}"
+    if unit == "years" and isinstance(value, (int, float)) and not isinstance(value, bool):
+        return f"{value:.2f} years"
     if unit == "num2" and isinstance(value, (int, float)) and not isinstance(value, bool):
         return f"{value:+.2f}"
     if unit == "yesno" and isinstance(value, bool):

@@ -16,6 +16,11 @@
     "financials_source": "hand-entered, 10-year (GULFOILLUB base case)",
     "price": 1054.0,
     "price_date": "2026-10-26",
-    "base_fiscal_year": "FY2023-24"
+    "base_fiscal_year": "FY2023-24",
+    "years_to_price_date": 2.5708418891170433,
+    "price_reachable_dated": true,
+    "implied_cagr_dated": 0.10278762114553543,
+    "max_achievable_price_10y_dated": 1110.2542542243593,
+    "growth_at_max_achievable_price_10y_dated": 0.11756084381039691
   }
 }

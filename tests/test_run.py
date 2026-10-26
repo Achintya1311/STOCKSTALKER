@@ -1458,3 +1458,23 @@ def test_factor_note_keeps_the_old_method_label_for_reliance():
     section = {"namespace": "factor", "available": True, "data": {"alpha_annual": 0.0}}
     assert run.contract_section_note(section, "RELIANCE") == run.gate_factor.method_label("RELIANCE")
     assert run.contract_section_note(section, "X") is None
+
+
+# -- Day 150 (V18): the valuation section shows the dated solve beside the undated one --
+
+
+def test_dated_valuation_keys_are_labelled():
+    label, text = run.contract_field("valuation", "max_achievable_price_10y_dated", 1110.2542, {})
+    assert label == "Highest price the model reaches, 10y, dated to the price date, ₹/share (max_achievable_price_10y_dated)"
+    assert text == "₹1,110.25"
+    assert run.contract_field("valuation", "implied_cagr_dated", 0.102788, {})[1] == "10.28%"
+    assert run.contract_field("valuation", "price_reachable_dated", True, {})[1] == "Yes"
+    assert run.contract_field("valuation", "years_to_price_date", 2.5708, {})[1] == "2.57 years"
+
+
+def test_valuation_fixture_carries_the_dated_solve():
+    section = run.build_contract_section("valuation", run.gate_valuation, "reverse-dcf-engine", "GULFOILLUB", FIXTURES)
+    data = section["data"]
+    assert data["price_reachable"] is False
+    assert data["price_reachable_dated"] is True
+    assert data["max_achievable_price_10y_dated"] == pytest.approx(1110.25, abs=0.01)
