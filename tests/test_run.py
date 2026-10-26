@@ -1478,3 +1478,27 @@ def test_valuation_fixture_carries_the_dated_solve():
     assert data["price_reachable"] is False
     assert data["price_reachable_dated"] is True
     assert data["max_achievable_price_10y_dated"] == pytest.approx(1110.25, abs=0.01)
+
+
+# -- Day 155 (P100): the fundamentals section names its assumed payout --
+
+
+def test_fundamentals_note_names_the_assumed_payout():
+    section = run.build_contract_section(
+        "fundamentals", run.gate_fundamentals, "three-statement-model", "GULFOILLUB", FIXTURES
+    )
+    note = run.contract_section_note(section, "GULFOILLUB")
+    assert "net debt/EBITDA assumes a 0% dividend payout (no dividend data)" in note
+    assert note.endswith(run.FUNDAMENTALS_SCOPE_NOTE)
+
+
+def test_fundamentals_note_without_payout_key_is_unchanged():
+    data = {"base_fiscal_year": "FY2023-24", "fy3_fiscal_year": "FY2026-27"}
+    assert "dividend payout" not in run.fundamentals_note(data)
+
+
+def test_assumed_inputs_render_as_a_labelled_list():
+    label, text = run.contract_field("fundamentals", "assumed_inputs", ["a (x)", "b (y)"], {})
+    assert label == "Inputs assumed, not from the filings (assumed_inputs)"
+    assert text == "a (x); b (y)"
+    assert run.contract_field("fundamentals", "dividend_payout", 0.0, {})[1] == "0.00%"

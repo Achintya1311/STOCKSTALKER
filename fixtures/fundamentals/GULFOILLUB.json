@@ -5,6 +5,12 @@
     "net_debt_ebitda_fy3": -1.6879049297647213,
     "balance_check": "passed",
     "base_fiscal_year": "FY2023-24",
-    "fy3_fiscal_year": "FY2026-27"
+    "fy3_fiscal_year": "FY2026-27",
+    "dividend_payout": 0.0,
+    "assumed_inputs": [
+      "dividend_payout 0% (no dividend data in the financials)",
+      "amortization_rate 10%/yr (no loan schedule disclosed)",
+      "revolver_limit = peak historical total debt (no facility size disclosed)"
+    ]
   }
 }

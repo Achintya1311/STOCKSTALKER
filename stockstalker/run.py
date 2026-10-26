@@ -353,6 +353,8 @@ _FIELD_LABELS: dict[str, dict[str, tuple[str, str]]] = {
         "balance_check": ("Balance check, every forecast year", "text"),
         "base_fiscal_year": ("Last reported fiscal year", "text"),
         "fy3_fiscal_year": ("FY3", "text"),
+        "dividend_payout": ("Dividend payout the forecast assumes", "pct"),
+        "assumed_inputs": ("Inputs assumed, not from the filings", "list"),
     },
     "risk": {
         "var_95": ("VaR 95%, {h}-day, simulated", "pct"),
@@ -395,6 +397,8 @@ def _fmt_unit(value: Any, unit: str) -> str:
         return "n/a"
     if unit == "pct" and isinstance(value, (int, float)) and not isinstance(value, bool):
         return f"{value:.2%}"
+    if unit == "list" and isinstance(value, list):
+        return "; ".join(str(item) for item in value)
     if unit == "inr" and isinstance(value, (int, float)) and not isinstance(value, bool):
         return f"₹{value:,.2f}"
     if unit == "x" and isinstance(value, (int, float)) and not isinstance(value, bool):
@@ -793,10 +797,17 @@ def fundamentals_note(data: dict[str, Any] | None) -> str:
     base, fy3 = data.get("base_fiscal_year"), data.get("fy3_fiscal_year")
     if not (base and fy3):
         return FUNDAMENTALS_SCOPE_NOTE
+    payout = data.get("dividend_payout")
+    # P100: the largest driver of net debt/EBITDA is an assumption, not a filing.
+    payout_note = (
+        f"net debt/EBITDA assumes a {payout:.0%} dividend payout (no dividend data). "
+        if payout is not None
+        else ""
+    )
     return (
         f"fy3 figures are the {fy3} forecast, the third year off {base} actuals "
         "(the years in between are modelled, not reported); negative net debt/EBITDA "
-        f"means net cash. {FUNDAMENTALS_SCOPE_NOTE}"
+        f"means net cash. {payout_note}{FUNDAMENTALS_SCOPE_NOTE}"
     )
 
 
