@@ -220,7 +220,10 @@ def build_peer_table(
     errors: list[str] | None = None,
     use_cache: bool = True,
 ) -> list[dict[str, Any]]:
-    """One row per ticker: trailing 1y return, 1y annualised volatility, 20d ADV.
+    """One row per ticker: trailing 1y return, 1y annualised volatility, 20d liquidity.
+
+    Liquidity is both the 20-day average rupee turnover (what the screen gates
+    on, D12) and the 20-day average share volume (D49).
 
     A ticker whose fixture fails to load is skipped and recorded in
     ``errors``, not silently dropped. Case-insensitive duplicates (the
@@ -247,7 +250,7 @@ def build_peer_table(
                 "ticker": ticker.upper(),
                 "return_1y": trailing_return(df),
                 "volatility_1y": trailing_volatility(df),
-                "adv_20d": liquidity_metrics(df)["adv_20d"],
+                **{k: liquidity_metrics(df)[k] for k in ("adv_20d", "turnover_20d")},
             }
         )
     return rows
@@ -290,6 +293,15 @@ def write_charts(
 
 def _fmt_pct(value: float | None) -> str:
     return f"{value:+.2%}" if value is not None else "n/a"
+
+
+TURNOVER_HEADER = "Turnover (20d avg, ₹ cr)"
+ADV_HEADER = "ADV (20d, shares)"
+
+
+def _fmt_crore(value: float | None) -> str:
+    """Rupees as ₹ crore (1 cr = 10 million), the unit an Indian desk reads turnover in (D49)."""
+    return f"₹{value / 1e7:,.2f} cr" if value is not None else "n/a"
 
 
 def _fmt_scalar(value: Any) -> str:
@@ -787,7 +799,7 @@ def contract_section_note(section: dict[str, Any], ticker: str) -> str | None:
     if namespace == "risk":
         return gate_risk.kupiec_note(ticker, section.get("data"))
     if namespace == "factor":
-        return gate_factor.method_label(ticker)
+        return gate_factor.method_label(ticker) or gate_factor.basis_note(section.get("data"))
     if namespace == "valuation":
         return gate_valuation.basis_note(section.get("data"))
     if namespace == "fundamentals":
@@ -841,13 +853,15 @@ def render_subject_table(subject: dict[str, Any]) -> Table:
     table.add_column("Trend", justify="right")
     table.add_column("Momentum", justify="right")
     table.add_column("Volume", justify="right")
-    table.add_column("ADV(20d)", justify="right")
+    table.add_column(TURNOVER_HEADER, justify="right")
+    table.add_column(ADV_HEADER, justify="right")
     if subject["score"] is None:
         table.add_row(
             subject["history_reason"],
             "n/a",
             "n/a",
             "n/a",
+            _fmt_crore(subject["liquidity"].get("turnover_20d")),
             f"{subject['liquidity']['adv_20d']:,.0f}",
         )
         return table
@@ -857,6 +871,7 @@ def render_subject_table(subject: dict[str, Any]) -> Table:
         f"{s['trend']:+.3f}",
         f"{s['momentum']:+.3f}",
         f"{s['volume']:+.3f}",
+        _fmt_crore(subject["liquidity"].get("turnover_20d")),
         f"{subject['liquidity']['adv_20d']:,.0f}",
     )
     return table
@@ -867,12 +882,14 @@ def render_peer_table(rows: list[dict[str, Any]]) -> Table:
     table.add_column("Ticker")
     table.add_column("Return (1y)", justify="right")
     table.add_column("Volatility (1y, ann.)", justify="right")
-    table.add_column("ADV(20d)", justify="right")
+    table.add_column(TURNOVER_HEADER, justify="right")
+    table.add_column(ADV_HEADER, justify="right")
     for r in rows:
         table.add_row(
             r["ticker"],
             _fmt_pct(r["return_1y"]),
             _fmt_pct(r["volatility_1y"]),
+            _fmt_crore(r.get("turnover_20d")),
             f"{r['adv_20d']:,.0f}",
         )
     return table
@@ -901,7 +918,8 @@ def write_tearsheet(
         "Not a SEBI-registered research analyst.",
         "",
         f"Close {subject['close']:,.2f} as of {subject['as_of']}. {score_line}, "
-        f"ADV(20d) {subject['liquidity']['adv_20d']:,.0f}.",
+        f"20-day average turnover {_fmt_crore(subject['liquidity'].get('turnover_20d'))} "
+        f"({subject['liquidity']['adv_20d']:,.0f} shares a day).",
         "",
         "Technical signals describe how the price has behaved, not what the business is "
         "worth. This section reuses the screen's own scoring; the subject is not in "
@@ -909,13 +927,13 @@ def write_tearsheet(
         "",
         "## Peer comparison",
         "",
-        "| Ticker | Return (1y) | Volatility (1y, ann.) | ADV(20d) |",
-        "|--------|-------------|------------------------|----------|",
+        f"| Ticker | Return (1y) | Volatility (1y, ann.) | {TURNOVER_HEADER} | {ADV_HEADER} |",
+        "|--------|-------------|------------------------|--------------------------|-------------------|",
     ]
     for r in peer_rows:
         lines.append(
             f"| {r['ticker']} | {_fmt_pct(r['return_1y'])} | {_fmt_pct(r['volatility_1y'])} "
-            f"| {r['adv_20d']:,.0f} |"
+            f"| {_fmt_crore(r.get('turnover_20d'))} | {r['adv_20d']:,.0f} |"
         )
     lines += ["", *contract_sections_markdown(contract_sections or [], subject["ticker"])]
     if chart_paths:

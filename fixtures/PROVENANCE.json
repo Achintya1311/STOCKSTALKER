@@ -91,13 +91,13 @@
         "fixtures/iima/"
       ],
       "generated": {
-        "stockstalker_commit": "9484f75",
-        "date": "2026-10-12"
+        "stockstalker_commit": "513daef",
+        "date": "2026-10-26"
       },
       "deterministic": true,
       "reproduced": {
         "date": "2026-10-26",
-        "sibling_commit": "a4fd44c"
+        "sibling_commit": "fcf688b"
       }
     },
     "factor/RELIANCE.json": {

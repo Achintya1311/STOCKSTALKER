@@ -72,6 +72,19 @@ def method_label(ticker: str) -> str | None:
     return OLD_METHOD_FACTOR_TICKERS.get(_normalize_ticker(ticker))
 
 
+def basis_note(data: dict[str, Any] | None) -> str | None:
+    """P98: the factor set and regression window, from the additive keys
+    fama-french-factor-model started writing on 26 Oct 2026; None without them."""
+    if not data or not data.get("factor_source"):
+        return None
+    parts = [data["factor_source"]]
+    if data.get("window_start") and data.get("window_end"):
+        parts.append(f"{data['window_start']} to {data['window_end']}")
+    if data.get("n_months") is not None:
+        parts.append(f"{data['n_months']} months")
+    return ", ".join(parts)
+
+
 def apply_factor_gate(screen: dict[str, Any], ticker: str, factor: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     """Return a copy of ``screen`` with ``factor`` attached to the candidate matching ``ticker``.
 

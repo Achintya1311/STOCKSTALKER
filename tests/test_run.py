@@ -1400,3 +1400,61 @@ def test_fundamentals_ratio_prints_as_a_multiple(tmp_path):
 
 def test_unknown_contract_keys_render_unchanged():
     assert run.contract_field("risk", "brand_new_key", 0.5, {}) == ("brand_new_key", "+0.5000")
+
+
+# -- Day 149 (D49, P98): liquidity in rupees, and the factor section names its basis --
+
+
+def test_peer_rows_carry_rupee_turnover(cfg):
+    rows = run.build_peer_table(["GULFOILLUB", *run.DEFAULT_PEERS], "fixtures")
+    by_ticker = {r["ticker"]: r for r in rows}
+    for r in rows:
+        assert r["turnover_20d"] > 0
+    # in rupees SOTL trades more than GANDHAR, though GANDHAR trades more shares (D49)
+    assert by_ticker["SOTL"]["turnover_20d"] > by_ticker["GANDHAR"]["turnover_20d"]
+    assert by_ticker["GANDHAR"]["adv_20d"] > by_ticker["SOTL"]["adv_20d"]
+
+
+def test_fmt_crore_formats_rupees_in_crore():
+    assert run._fmt_crore(46_900_000.0) == "₹4.69 cr"
+    assert run._fmt_crore(None) == "n/a"
+
+
+def test_subject_and_peer_tables_label_turnover_and_shares(cfg):
+    subject = run.build_subject_section("GULFOILLUB", "fixtures", cfg)
+    rows = run.build_peer_table(["GULFOILLUB", *run.DEFAULT_PEERS], "fixtures")
+    for text in (render(run.render_subject_table(subject)), render(run.render_peer_table(rows))):
+        assert "Turnover (20d avg, ₹ cr)" in text
+        assert "ADV (20d, shares)" in text
+    assert run._fmt_crore(subject["liquidity"]["turnover_20d"]) in render(run.render_subject_table(subject))
+
+
+def test_tearsheet_header_and_peer_rows_show_rupee_turnover(cfg, tmp_path):
+    subject = run.build_subject_section("GULFOILLUB", "fixtures", cfg)
+    rows = run.build_peer_table(["GULFOILLUB", *run.DEFAULT_PEERS], "fixtures")
+    path = tmp_path / "tearsheet.md"
+    run.write_tearsheet(subject, rows, "2026-10-26", path)
+    text = path.read_text()
+    turnover = run._fmt_crore(subject["liquidity"]["turnover_20d"])
+    assert f"20-day average turnover {turnover}" in text
+    assert "| Turnover (20d avg, ₹ cr) | ADV (20d, shares) |" in text
+    for r in rows:
+        assert f"| {run._fmt_crore(r['turnover_20d'])} | {r['adv_20d']:,.0f} |" in text
+
+
+def test_peer_table_without_turnover_shows_na():
+    rows = [{"ticker": "GANDHAR", "return_1y": None, "volatility_1y": None, "adv_20d": 123.0}]
+    assert "n/a" in render(run.render_peer_table(rows))
+
+
+def test_factor_note_names_the_factor_set_and_window():
+    section = run.build_contract_section("factor", run.gate_factor, "fama-french-factor-model", "GULFOILLUB", FIXTURES)
+    assert run.contract_section_note(section, "GULFOILLUB") == (
+        "IIMA India factors (MF/SMB/HML/WML), monthly, 2014-08 to 2025-12, 137 months"
+    )
+
+
+def test_factor_note_keeps_the_old_method_label_for_reliance():
+    section = {"namespace": "factor", "available": True, "data": {"alpha_annual": 0.0}}
+    assert run.contract_section_note(section, "RELIANCE") == run.gate_factor.method_label("RELIANCE")
+    assert run.contract_section_note(section, "X") is None
