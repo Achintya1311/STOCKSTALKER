@@ -231,8 +231,10 @@ of exposure. Full numbers in `outputs/backtest_<date>.{json,csv,md}`.
 The no-cost numbers above were never realistic: daily rebalancing pays STT
 on every entry and exit. `backtest.py` now charges 0.1% STT per side,
 0.015% stamp duty on the buy side only, and a `--slippage-bps` flag
-(default 10) on every trade — Indian delivery-equity costs, not a made-up
-haircut. Buy-and-hold pays the same schedule on its one entry and one exit,
+(default 10) on every trade — the two largest Indian delivery-equity
+taxes (STT and stamp duty) plus a slippage allowance, not a made-up haircut. Exchange, SEBI,
+GST and depository charges are not modelled, so these after-cost numbers
+are optimistic (see `docs/limitations.md`). Buy-and-hold pays the same schedule on its one entry and one exit,
 so the comparison below is still apples-to-apples; it just barely moves the
 buy-and-hold number, because that side trades twice in total instead of
 roughly 150 times.
