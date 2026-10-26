@@ -211,3 +211,26 @@ def test_kupiec_note_falls_back_to_the_static_table_for_a_v03_shaped_contract():
 
 def test_kupiec_note_fallback_ignores_an_unrelated_risk_payload_without_kupiec_99():
     assert risk.kupiec_note("TATACHEM", SYNTHETIC_RISK) is None
+
+
+# D36: monte-carlo-risk-lab's pre-registered out-of-sample backtest (GARCH-t vs
+# constant-volatility Gaussian) travels in an additive ``oos_var`` block; the
+# note adds one method-only sentence from it when present.
+
+
+def test_kupiec_note_adds_the_out_of_sample_result_for_gulfoillub():
+    gulf_risk = risk.load_contract(ROOT / "fixtures" / "risk" / "GULFOILLUB.json")
+    assert gulf_risk["oos_var"]["n_test"] == 2506
+    note = risk.kupiec_note("GULFOILLUB", gulf_risk)
+    assert "REJECTED at both 95%" in note  # the in-sample result stays
+    assert "Out of sample (pre-registered, 2,506 test days" in note
+    assert "GARCH(1,1)-t passes all criteria" in note
+    assert "21 vs 25.1 expected" in note
+    assert "constant-volatility Gaussian fails" in note
+    assert "42 vs 25.1" in note
+
+
+def test_kupiec_note_is_unchanged_without_an_oos_var_block():
+    real_risk = risk.load_contract(RELIANCE_CONTRACT)
+    assert "oos_var" not in real_risk
+    assert "Out of sample" not in risk.kupiec_note("RELIANCE", real_risk)

@@ -23,6 +23,30 @@
       "lr_stat": 5.71289438618345,
       "p_value": 0.016840750679291916,
       "reject_at_5pct": true
+    },
+    "oos_var": {
+      "prereg": "docs/PREREG_oos_var.md",
+      "window": 500,
+      "refit_every": 20,
+      "n_test": 2506,
+      "expected_95": 125.30000000000011,
+      "expected_99": 25.060000000000024,
+      "garch_t_95_exceptions": 111,
+      "garch_t_95_kupiec_p": 0.18170583206189928,
+      "garch_t_95_cc_p": 0.16625454771129367,
+      "garch_t_99_exceptions": 21,
+      "garch_t_99_kupiec_p": 0.4017376522288022,
+      "garch_t_99_cc_p": 0.5891362270621419,
+      "garch_t_all_pass": true,
+      "garch_t_not_converged": 0,
+      "gaussian_95_exceptions": 101,
+      "gaussian_95_kupiec_p": 0.021350626590685207,
+      "gaussian_95_cc_p": 0.005984311442986945,
+      "gaussian_99_exceptions": 42,
+      "gaussian_99_kupiec_p": 0.0019317828898836042,
+      "gaussian_99_cc_p": 0.0035530075685007434,
+      "gaussian_all_pass": false,
+      "gaussian_not_converged": 0
     }
   }
 }

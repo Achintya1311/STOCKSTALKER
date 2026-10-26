@@ -111,8 +111,31 @@ def kupiec_note(ticker: str, risk: dict[str, Any] | None = None) -> str | None:
     passes no ``risk`` at all (the pre-Day-6 call shape).
     """
     if risk is not None and "kupiec_99" in risk:
-        return _kupiec_verdict_note(risk)
+        note = _kupiec_verdict_note(risk)
+        if isinstance(risk.get("oos_var"), dict):
+            note = f"{note} {_oos_var_note(risk['oos_var'])}"
+        return note
     return KUPIEC_NOTES.get(_normalize_ticker(ticker))
+
+
+def _oos_var_note(oos: dict[str, Any]) -> str:
+    """D36: one method-only sentence from monte-carlo-risk-lab's pre-registered
+    out-of-sample backtest (``mcsim.oosvar --contract``), so the front door shows
+    the same two-part story that repo's README tells: the in-sample rejection
+    above, and which model does or does not hold up on days it never saw."""
+
+    def model(label: str, key: str) -> str:
+        verdict = "passes all criteria" if oos[f"{key}_all_pass"] else "fails"
+        return (
+            f"{label} {verdict} (99%: {oos[f'{key}_99_exceptions']} vs {oos['expected_99']:.1f} expected, "
+            f"Kupiec p={oos[f'{key}_99_kupiec_p']:.3f}, conditional coverage p={oos[f'{key}_99_cc_p']:.3f})"
+        )
+
+    return (
+        f"Out of sample (pre-registered, {oos['n_test']:,} test days, {oos['window']}-day window refit every "
+        f"{oos['refit_every']} days): {model('GARCH(1,1)-t', 'garch_t')}; "
+        f"{model('the constant-volatility Gaussian', 'gaussian')}."
+    )
 
 
 def apply_risk_gate(screen: dict[str, Any], ticker: str, risk: dict[str, float]) -> tuple[dict[str, Any], bool]:
