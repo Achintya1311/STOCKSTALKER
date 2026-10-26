@@ -393,3 +393,13 @@ def test_main_empty_universe_is_a_clean_failure(tmp_path):
     empty.write_text("# nothing here\n")
     exit_code = backtest.main(["--universe", str(empty), "--output-dir", str(tmp_path)])
     assert exit_code == 1
+
+
+def test_terminal_report_names_each_tickers_tested_window(tmp_path, capsys):
+    """D34: the printed report states the dates it tested, not only the json/csv/md."""
+    assert backtest.main(["--output-dir", str(tmp_path), "--date", "2026-09-07"]) == 0
+    out = capsys.readouterr().out
+    payload = json.loads((tmp_path / "backtest_2026-09-07.json").read_text())
+    for r in payload["results"]:
+        line = next(l for l in out.splitlines() if l.strip().startswith(r["ticker"]))
+        assert f"{r['start']} to {r['end']}" in line

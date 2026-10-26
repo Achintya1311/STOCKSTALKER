@@ -3,7 +3,7 @@
 Educational research on historical data. Not investment advice. Not a SEBI-registered research analyst.
 
 **Question:** does the daily trend/momentum/volume screen beat simply buying and holding, once realistic Indian delivery-equity trading costs are included?
-**Method:** a walk-forward long/flat backtest — long the next day only when yesterday's blended screen score clears 0.5, no shorting — over three NSE names (RELIANCE, TATACHEM, CROMPTON), costed at 0.1% STT per side, 0.015% stamp duty on buys, and 10bps slippage.
+**Method:** a walk-forward long/flat backtest — long the next day only when yesterday's blended screen score clears 0.5, no shorting — over three NSE names (RELIANCE, TATACHEM, CROMPTON), 14 Nov 2024 to 4 Sep 2026 (450 tested days each), costed at 0.1% STT per side, 0.015% stamp duty on buys, and 10bps slippage.
 **Finding (Day 58, the honest one):** only 1 of 3 names beats being long this often, on these days, vs. being long the same number of days at random — down from "2 of 3 beat 100%-exposure buy-and-hold" (Day 7), and down to 1 of 3 vs. buy-and-hold once costs are included too (mean −17.75% vs. −23.72%, Day 8). Full tables in Findings below.
 **Chart:** `outputs/tearsheet_GULFOILLUB_<date>.md` lists the three charts `stockstalker.run` writes to `outputs/` — GULFOILLUB vs. peers rebased to 100, drawdown from peak, rolling 1y volatility.
 **Reproduce:** `python -m stockstalker.backtest --offline` (the finding above) or `python -m stockstalker.run --ticker GULFOILLUB --offline` (the front door below).
@@ -37,7 +37,7 @@ The split follows the data: price history is free for any NSE stock, but driver-
 
 | Part | What it is | What held up | What failed |
 |---|---|---|---|
-| Screen | a daily trend/momentum/volume score on 3 names, tested long/flat walk-forward | TATACHEM's chosen days beat 90% of 2,000 random same-size exposures (Day 58) | RELIANCE (38th percentile) and CROMPTON (5th) did not; after costs only 1 of 3 beats buy-and-hold, mean −17.75% vs. −23.72% (Day 8) |
+| Screen | a daily trend/momentum/volume score on 3 names, tested long/flat walk-forward | TATACHEM's chosen days beat 90% of 2,000 random same-size exposures (Day 58); with three names, one result that high happens by chance about 27% of the time | RELIANCE (38th percentile) and CROMPTON (5th) did not; after costs only 1 of 3 beats buy-and-hold, mean −17.75% vs. −23.72% (Day 8) |
 | Tear sheet | one command that gathers price, risk, factor, valuation, options and sentiment sections for one stock from the six sibling repos | runs end to end on RELIANCE, CASTROLIND and GULFOILLUB, tear sheets committed in `verification/tearsheets/` | fundamentals exist for GULFOILLUB only; its parametric VaR is rejected by the Kupiec test at 95% and 99%; its factor alpha is not significant (t ≈ +1.01) |
 | Lab | the same kinds of rules tested on 213 F&O stocks with a market line and many-trials corrections | some one-day rules beat the market line on 2015-2020 train data after the SPA correction | nothing on the one-week horizon; this repo's own blended score shows no edge at scale; nothing yet checked on unseen years |
 
@@ -46,7 +46,7 @@ The split follows the data: price history is free for any NSE stock, but driver-
 ```bash
 uv venv && source .venv/bin/activate
 uv pip install -e . pytest
-pytest                                                   # 446 passed, 2 skipped on 25 Oct 2026
+pytest                                                   # 447 passed, 2 skipped on 26 Oct 2026
 python -m stockstalker.backtest --offline                # the screen findings (Days 7, 8, 58)
 python -m stockstalker.run --ticker GULFOILLUB --offline # the front door from committed fixtures
 ```
@@ -173,7 +173,7 @@ the picture.
 screen score (>= 0.5, i.e. a non-negative trend/momentum/volume blend)
 predicts today capturing a positive return — long when the prior close's
 score clears the bar, flat otherwise, no shorting, no costs — over the
-~450 tradeable days once each ticker clears its 50-bar burn-in.
+~450 tradeable days once each ticker clears its 50-bar burn-in (14 Nov 2024 to 4 Sep 2026; `stockstalker.backtest` prints the window per ticker).
 
 | Ticker | Strategy | Buy & hold | Edge |
 |---|---|---|---|
@@ -210,7 +210,10 @@ Only **1 of 3** beats being long this often, on these days, vs. being long
 this often at random — down from "2 of 3 beat buy-and-hold" above, and this
 is the harder, more honest number. TATACHEM's Day 7 edge survives this check
 (90th percentile of 2,000 random same-length exposures): its specific days
-were genuinely better than most random picks of the same count. CROMPTON's
+were better than most random picks of the same count. That is one name of
+three, though: with three names, at least one landing at the 90th percentile
+or better happens by chance about 27% of the time (1 − 0.9³), so on its own
+it doesn't separate a good rule from luck. CROMPTON's
 Day 7 "beat buy-and-hold" was the opposite of what it looked like — its
 actual days rank in the bottom 5% of random same-length exposures, i.e. the
 screen picked *worse* days than chance would, and it only "beat" buy-and-hold

@@ -502,7 +502,7 @@ def print_report(report: dict[str, Any], errors: list[str]) -> None:
             f"  {r['ticker']:<14} strategy {r['strategy_return']:+.2%} -> {r['strategy_return_with_costs']:+.2%} "
             f"with costs  buy&hold {r['buy_and_hold_return']:+.2%} -> {r['buy_and_hold_return_with_costs']:+.2%} "
             f"({verdict} buy&hold no-cost, {verdict_with_costs} with costs, "
-            f"{r['days_long']}/{r['days_tested']} days long)"
+            f"{r['days_long']}/{r['days_tested']} days long, {r['start']} to {r['end']})"
         )
         print(
             f"  {'':<14} vs. random exposure (same {r['days_long']} days, chosen at random): "
