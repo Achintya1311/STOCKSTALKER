@@ -690,7 +690,7 @@ def contract_section_note(section: dict[str, Any], ticker: str) -> str | None:
     if namespace == "factor":
         return gate_factor.method_label(ticker)
     if namespace == "valuation":
-        return gate_valuation.financials_source_note(section.get("data"))
+        return gate_valuation.basis_note(section.get("data"))
     if namespace == "fundamentals":
         return fundamentals_note(section.get("data"))
     return None

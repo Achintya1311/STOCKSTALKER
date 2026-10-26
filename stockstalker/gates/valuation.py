@@ -111,3 +111,24 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+def basis_note(data: dict[str, Any] | None) -> str | None:
+    """V16, V17: what the valuation numbers are relative to, then the financials source.
+
+    ``price``/``price_date``/``base_fiscal_year`` are additive keys
+    reverse-dcf-engine started writing on 26 Oct 2026 (``d1a04c5``); a
+    contract without them gets :func:`financials_source_note` alone.
+    """
+    source = financials_source_note(data)
+    if not data or data.get("price") is None:
+        return source
+    when = f" ({data['price_date']})" if data.get("price_date") else ""
+    base = data.get("base_fiscal_year")
+    parts = [f"solved against ₹{data['price']:,.2f}{when}" + (f", {base} financials" if base else "")]
+    if base:
+        parts.append(f"implied_ebit_margin is the {base} EBIT margin held fixed (an input, not solved)")
+    if source:
+        parts.append(source)
+    return "; ".join(parts)
+

@@ -1336,3 +1336,26 @@ def test_cli_prints_the_fundamentals_scope_note_for_any_ticker(tmp_path):
     assert rc == 0
     text = (tmp_path / "tearsheet_TATAELXSI_2026-10-17.md").read_text()
     assert run.FUNDAMENTALS_SCOPE_NOTE in text
+
+
+# -- Day 147 (V16, V17): the valuation section states its own basis --
+
+
+def test_valuation_note_names_price_date_base_year_and_the_fixed_margin():
+    section = run.build_contract_section(
+        "valuation", run.gate_valuation, "reverse-dcf-engine", "GULFOILLUB", FIXTURES
+    )
+    note = run.contract_section_note(section, "GULFOILLUB")
+    assert "solved against ₹1,054.00 (2026-10-26)" in note
+    assert "FY2023-24 financials" in note
+    assert "implied_ebit_margin is the FY2023-24 EBIT margin held fixed (an input, not solved)" in note
+    assert "financials source: hand-entered, 10-year (GULFOILLUB base case)" in note
+
+
+def test_valuation_note_without_basis_keys_keeps_the_old_source_note():
+    section = {
+        "namespace": "valuation",
+        "available": True,
+        "data": {"financials_source": "yfinance, consolidated, 4-5 years"},
+    }
+    assert run.contract_section_note(section, "X") == "financials source: yfinance, consolidated, 4-5 years"

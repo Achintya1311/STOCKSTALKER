@@ -13,6 +13,9 @@
     "breakeven_reachable": false,
     "max_achievable_price_perpetual": 708.4122816087266,
     "growth_at_max_achievable_price_perpetual": 0.11755424179417283,
-    "financials_source": "hand-entered, 10-year (GULFOILLUB base case)"
+    "financials_source": "hand-entered, 10-year (GULFOILLUB base case)",
+    "price": 1054.0,
+    "price_date": "2026-10-26",
+    "base_fiscal_year": "FY2023-24"
   }
 }

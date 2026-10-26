@@ -180,14 +180,14 @@
         "fixtures/wacc/"
       ],
       "generated": {
-        "stockstalker_commit": "1c93ba1",
+        "stockstalker_commit": "cc6c92e",
         "date": "2026-10-26"
       },
       "deterministic": true,
       "note": "Changes whenever reverse-dcf-engine's price (weekly) or WACC (monthly) workflows commit new fixtures; a drift failure then means: regenerate.",
       "reproduced": {
         "date": "2026-10-26",
-        "sibling_commit": "f371a5c"
+        "sibling_commit": "d1a04c5"
       }
     },
     "fundamentals/GULFOILLUB.json": {
