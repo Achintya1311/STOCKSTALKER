@@ -13,7 +13,7 @@ Educational research on historical data. Not investment advice. Not a SEBI-regis
 | Part | Scope | Status |
 |---|---|---|
 | **Screen** | 3 names (RELIANCE, TATACHEM, CROMPTON); 1 of 3 held up against random same-size exposure | done; a small monitor, not a universe screen |
-| **Tear sheet** | any NSE stock, one command (`python -m stockstalker.run --ticker <TICKER> --live`) | done (v0.9); verified end to end on 3 names |
+| **Tear sheet** | price signals for any NSE stock, full fundamentals for one (GULFOILLUB); one command (`python -m stockstalker.run --ticker <TICKER> --live`) | done (v0.9); verified end to end on RELIANCE, CASTROLIND and GULFOILLUB |
 | **Lab** | separate repo, [`stockstalker-lab`](https://github.com/Achintya1311/stockstalker-lab), 213-stock NSE F&O universe | testing phase; train-split results only |
 
 **Evidence** (lab reports as of 26 Oct 2026, 2015-2020 train split only; the lab re-runs them, so the linked files win over these numbers; nothing here has been checked on unseen years yet):
@@ -52,7 +52,7 @@ python -m stockstalker.run --ticker GULFOILLUB --offline # the front door from c
 ```
 
 The front door to an eight-repo equity research pipeline (this repo plus seven research repos; the separate stockstalker-lab is not counted). One command builds
-a tear sheet for any NSE stock —
+a tear sheet for any NSE stock (price signals for any stock, full fundamentals for GULFOILLUB only) —
 
 ```bash
 python -m stockstalker.run --ticker <TICKER> --live
@@ -72,7 +72,7 @@ instead of a fabricated fundamentals section. It also runs a separate,
 smaller daily screen over three unrelated NSE names — see "The screen is
 a separate, smaller thing" below for how the two relate.
 
-**Status:** three parts, three states. Screen: done, a small monitor on 3 names (1 of 3 held up against random same-size exposure). Tear sheet: done (v0.9, Oct 2026), verified end to end on 3 names. Lab: testing phase in a separate repo, train-split results only. `python -m stockstalker.run --ticker <ANY> --live` reads every module's live or committed findings for that stock; `--offline` (GULFOILLUB is the default) reads the original hand-researched fixtures.
+**Status:** three parts, three states. Screen: done, a small monitor on 3 names (1 of 3 held up against random same-size exposure). Tear sheet: done (v0.9, Oct 2026), verified end to end on RELIANCE, CASTROLIND and GULFOILLUB (not the screen's three). Lab: testing phase in a separate repo, train-split results only. `python -m stockstalker.run --ticker <ANY> --live` reads every module's live or committed findings for that stock; `--offline` (GULFOILLUB is the default) reads the original hand-researched fixtures.
 
 *Educational research on historical data. Not investment advice. Not a SEBI-registered research analyst.*
 
