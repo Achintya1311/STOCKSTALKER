@@ -35,7 +35,7 @@ def screen(cfg):
 
 def test_load_contract_reads_the_real_three_statement_model_fixture():
     loaded = fundamentals.load_contract(GULFOILLUB_CONTRACT)
-    assert set(loaded) == fundamentals.REQUIRED_FUNDAMENTALS_KEYS
+    assert fundamentals.REQUIRED_FUNDAMENTALS_KEYS <= set(loaded)
     assert loaded["balance_check"] == "passed"
     assert loaded["fy3_revenue_cagr"] == pytest.approx(0.15390188144032124)
 

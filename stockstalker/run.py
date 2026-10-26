@@ -669,6 +669,19 @@ FUNDAMENTALS_SCOPE_NOTE = (
 )
 
 
+def fundamentals_note(data: dict[str, Any] | None) -> str:
+    """D48: the scope note, led by the years the fy3 forecast spans when the contract names them."""
+    data = data or {}
+    base, fy3 = data.get("base_fiscal_year"), data.get("fy3_fiscal_year")
+    if not (base and fy3):
+        return FUNDAMENTALS_SCOPE_NOTE
+    return (
+        f"fy3 figures are the {fy3} forecast, the third year off {base} actuals "
+        "(the years in between are modelled, not reported); negative net debt/EBITDA "
+        f"means net cash. {FUNDAMENTALS_SCOPE_NOTE}"
+    )
+
+
 def contract_section_note(section: dict[str, Any], ticker: str) -> str | None:
     """A one-line caveat for this contract section, beyond its own fields (R5, R6)."""
     namespace = section["namespace"]
@@ -679,7 +692,7 @@ def contract_section_note(section: dict[str, Any], ticker: str) -> str | None:
     if namespace == "valuation":
         return gate_valuation.financials_source_note(section.get("data"))
     if namespace == "fundamentals":
-        return FUNDAMENTALS_SCOPE_NOTE
+        return fundamentals_note(section.get("data"))
     return None
 
 

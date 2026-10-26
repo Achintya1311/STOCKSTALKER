@@ -1290,7 +1290,7 @@ def test_contract_section_note_names_fundamentals_scope_unconditionally():
     )
     assert available_section["available"] is True
     note = run.contract_section_note(available_section, "GULFOILLUB")
-    assert note == run.FUNDAMENTALS_SCOPE_NOTE
+    assert note.endswith(run.FUNDAMENTALS_SCOPE_NOTE)
     assert "GULFOILLUB" in note
     assert "built by hand" in note
 
@@ -1299,6 +1299,22 @@ def test_contract_section_note_names_fundamentals_scope_unconditionally():
     )
     assert unavailable_section["available"] is False
     assert run.contract_section_note(unavailable_section, "TATAELXSI") == run.FUNDAMENTALS_SCOPE_NOTE
+
+
+def test_fundamentals_note_says_the_figures_are_a_dated_forecast():
+    """D48: fy3_* is the third forecast year, not a reported one; say which years."""
+    section = run.build_contract_section(
+        "fundamentals", run.gate_fundamentals, "three-statement-model", "GULFOILLUB", FIXTURES
+    )
+    note = run.contract_section_note(section, "GULFOILLUB")
+    assert "FY2026-27 forecast" in note
+    assert "FY2023-24 actuals" in note
+    assert "net cash" in note
+
+
+def test_fundamentals_note_falls_back_without_year_keys():
+    section = {"namespace": "fundamentals", "available": True, "data": {"balance_check": "passed"}}
+    assert run.contract_section_note(section, "X") == run.FUNDAMENTALS_SCOPE_NOTE
 
 
 def test_cli_prints_the_fundamentals_scope_note_for_any_ticker(tmp_path):

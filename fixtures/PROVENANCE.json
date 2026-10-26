@@ -208,13 +208,13 @@
         "data/GULFOILLUB/ (hand-entered annual reports)"
       ],
       "generated": {
-        "stockstalker_commit": "81b31ed",
-        "date": "2026-10-11"
+        "stockstalker_commit": "e9ea52a",
+        "date": "2026-10-26"
       },
       "deterministic": true,
       "reproduced": {
         "date": "2026-10-26",
-        "sibling_commit": "f3c0ce4"
+        "sibling_commit": "5486cad"
       }
     },
     "sizing/RELIANCE.json": {
