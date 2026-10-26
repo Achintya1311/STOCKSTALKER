@@ -51,7 +51,7 @@ python -m stockstalker.backtest --offline                # the screen findings (
 python -m stockstalker.run --ticker GULFOILLUB --offline # the front door from committed fixtures
 ```
 
-The front door to a nine-repo equity research pipeline. One command builds
+The front door to an eight-repo equity research pipeline (this repo plus seven research repos; the separate stockstalker-lab is not counted). One command builds
 a tear sheet for any NSE stock —
 
 ```bash
@@ -107,7 +107,7 @@ hub's `CRITIQUES.md` for why point-in-time matters here.
 
 ## What this is
 
-The spine of a nine-repo research pipeline. The screen above answers a
+The spine of an eight-repo research pipeline. The screen above answers a
 narrow question on its own three-ticker universe — which of those names is
 behaving in a way worth a closer look. The front door above is the
 different, larger thing: one command showing everything the pipeline

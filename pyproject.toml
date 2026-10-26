@@ -1,7 +1,7 @@
 [project]
 name = "stockstalker"
 version = "0.9.0"
-description = "Front door to a nine-repo equity research pipeline, plus a small daily NSE screen. CLI only."
+description = "Front door to an eight-repo equity research pipeline, plus a small daily NSE screen. CLI only."
 requires-python = ">=3.10"
 dependencies = [
     "pandas",
