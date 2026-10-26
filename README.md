@@ -1,4 +1,4 @@
-# Stock Stalker
+# StockStalker
 
 Educational research on historical data. Not investment advice. Not a SEBI-registered research analyst.
 
@@ -8,7 +8,7 @@ Educational research on historical data. Not investment advice. Not a SEBI-regis
 **Chart:** `outputs/tearsheet_GULFOILLUB_<date>.md` lists the three charts `stockstalker.run` writes to `outputs/` — GULFOILLUB vs. peers rebased to 100, drawdown from peak, rolling 1y volatility.
 **Reproduce:** `python -m stockstalker.backtest --offline` (the finding above) or `python -m stockstalker.run --ticker GULFOILLUB --offline` (the front door below).
 
-**One name, three things.** "Stock Stalker" covers three separate pieces of work:
+**One name, three things.** "StockStalker" covers three separate pieces of work:
 
 | Part | Scope | Status |
 |---|---|---|
@@ -72,7 +72,7 @@ instead of a fabricated fundamentals section. It also runs a separate,
 smaller daily screen over three unrelated NSE names — see "The screen is
 a separate, smaller thing" below for how the two relate.
 
-**Status:** Complete (v0.9, Oct 2026). `python -m stockstalker.run --ticker <ANY> --live` reads every module's live or committed findings for that stock; `--offline` (GULFOILLUB is the default) reads the original hand-researched fixtures.
+**Status:** three parts, three states. Screen: done, a small monitor on 3 names (1 of 3 held up against random same-size exposure). Tear sheet: done (v0.9, Oct 2026), verified end to end on 3 names. Lab: testing phase in a separate repo, train-split results only. `python -m stockstalker.run --ticker <ANY> --live` reads every module's live or committed findings for that stock; `--offline` (GULFOILLUB is the default) reads the original hand-researched fixtures.
 
 *Educational research on historical data. Not investment advice. Not a SEBI-registered research analyst.*
 
