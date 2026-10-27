@@ -13,7 +13,7 @@ Educational research on historical data. Not investment advice. Not a SEBI-regis
 | Part | Scope | Status |
 |---|---|---|
 | **Screen** | 3 names (RELIANCE, TATACHEM, CROMPTON); 1 of 3 held up against random same-size exposure | done; a small monitor, not a universe screen |
-| **Tear sheet** | price signals for any NSE stock, full fundamentals for one (GULFOILLUB); one command (`python -m stockstalker.run --ticker <TICKER> --live`) | done (v0.9); verified end to end on RELIANCE, CASTROLIND and GULFOILLUB |
+| **Tear sheet** | every module for any NSE stock (price signals, risk, factor exposure, reverse DCF, options for F&O names, headline sentiment); hand-built three-statement fundamentals for one (GULFOILLUB); one command (`python -m stockstalker.run --ticker <TICKER> --live`) | done (v0.9); verified end to end on RELIANCE, CASTROLIND and GULFOILLUB |
 | **Lab** | separate repo, [`stockstalker-lab`](https://github.com/Achintya1311/stockstalker-lab), 213-stock NSE F&O universe | testing phase; train-split results only |
 
 **Evidence** (lab reports as of 26 Oct 2026, 2015-2020 train split only; the lab re-runs them, so the linked files win over these numbers; nothing here has been checked on unseen years yet):
