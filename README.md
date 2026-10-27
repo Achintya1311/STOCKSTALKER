@@ -144,6 +144,7 @@ Every source is free. This project never requires a paid tier, a subscription, o
   | `fixtures/ohlcv/SOTL_NS.csv` | 2014-07-31 | 2026-10-09 | 3,007 | front door peer table |
   | `fixtures/ohlcv/GANDHAR_NS.csv` | 2023-11-30 | 2026-10-09 | 707 | front door peer table (listed 2023-11-30) |
   | `fixtures/ohlcv/TATAELXSI_NS.csv` | 2024-10-16 | 2026-10-16 | 497 | live risk-contract smoke test |
+- **Daily snapshots** — `data/snapshots/2026.csv`, one EOD bar per weekday for the three screen names, appended by `.github/workflows/daily-snapshot.yml` (`scripts/snapshot.py`, yfinance `auto_adjust=True` as of each capture day, so a later dividend does not back-adjust them). Only `python -m stockstalker.backtest --out-of-sample` reads them. Through 26 Oct 2026, 7 of 34 rows per name have no price (yfinance returned a NaN bar and the workflow committed it); the backtest skips them, so the next bar's return spans the gap. TATACHEM's 15 Sep 2026 bar has open = high = low = close, 20% above the previous close; it has not been checked against NSE's own record.
 - **NSE F&O lot list** — `fixtures/fo_mktlots.csv`, refreshed monthly by `.github/workflows/fetch-fo-mktlots.yml` (`python -m stockstalker.fo_mktlots`); `fixtures/fo_mktlots_meta.json` records the fetch date and the list's own date
 - **Sibling contract fixtures** — `fixtures/PROVENANCE.json` names the repo, command and input behind each file under `fixtures/{risk,factor,vol,sentiment,sizing,valuation,fundamentals}/`; `tests/test_fixture_provenance.py` reruns the deterministic ones against the sibling checkouts (daily in `contracts.yml`) and fails if a committed copy no longer matches
 
@@ -239,6 +240,30 @@ about the same backtest, not a contradiction: the first is about full
 exposure, the second is about the specific days chosen given the same amount
 of exposure. Full numbers in `outputs/backtest_<date>.{json,csv,md}`.
 
+### Out of sample — the days after the rule froze (R29)
+
+Every number above is in-sample: the fixtures end on 4 Sep 2026 and the
+signal math and weights were last changed on 7 Sep. The daily snapshots
+since then are the only days the rule was not chosen on.
+`python -m stockstalker.backtest --offline --out-of-sample` scores the same
+rule, with the same costs, on bars after 7 Sep (scores still use the full
+history before each day). Run on 27 Oct 2026, snapshots to 23 Oct with a
+price (25 scored days per name):
+
+| Ticker | Days long / scored | Strategy (no cost → costs) | Buy-and-hold | Random-exposure mean | Percentile |
+|---|---|---|---|---|---|
+| RELIANCE.NS | 1 / 25 | −1.11% → −1.31% | −9.13% | −0.39% | 37th |
+| TATACHEM.NS | 7 / 25 | −11.25% → −11.63% | −5.96% | −0.87% | 19th |
+| CROMPTON.NS | 0 / 25 | 0.00% → 0.00% | −15.51% | never long | none |
+
+**0 of the 2 names that were ever long beat random same-size exposure.**
+TATACHEM, the one in-sample name above the 90th percentile, is at the 19th
+here. Twenty-five days and at most seven trades per name cannot separate a
+rule from luck either way, so this neither confirms nor refutes the
+in-sample result. The segment grows by one bar a day; rerun the command
+for the current numbers. Data caveats are under Data sources (skipped
+NaN bars, an unverified TATACHEM bar on 15 Sep).
+
 ### Day 8 — the same table with costs
 
 The no-cost numbers above were never realistic: daily rebalancing pays STT
@@ -312,7 +337,7 @@ portfolio carries (see `PLAN.md` rule 1).
 - The ticker universe is today's list. Names that delisted or were removed are absent, so any historical result carries survivorship bias. Stated rather than corrected.
 - Technical signals describe how a price has behaved, not what a business is worth. Nothing here is a valuation, and nothing here is a recommendation.
 - The Alpha Vantage free tier is 25 requests/day. Live runs across a real universe are rate-limited by design, which is why the fixture path exists.
-- Any backtest in this repo is in-sample unless the README says otherwise in that specific section.
+- Any backtest in this repo is in-sample unless the README says otherwise in that specific section. The one out-of-sample segment (Findings, "Out of sample") covers a few weeks of snapshots, too short to test the rule on its own.
 - The screener's signal weights (`config/screen.yaml`) and each signal's internal blend (e.g. RSI/MACD 50/50 inside momentum) are hand-picked, not fit or optimized against anything. Day 7's walk-forward backtest against buy-and-hold (see Findings) found no clear edge — 2 of 3 tickers beat buy-and-hold, but only by losing less, and the strategy still lost to buy-and-hold on the one name that rose. Day 58's exposure-matched baseline (see Findings) is harder on the same backtest: only 1 of 3 beats being long this often, on these days, vs. being long the same number of days at random — CROMPTON's Day 7 "beat buy-and-hold" ranks in the bottom 5% of random same-length exposures, i.e. its 138 chosen days were worse than a random 138 days, not better. Any future re-tuning of these weights against this same fixture window would be in-sample.
 - The pipeline audit (`python -m stockstalker.audit`) only proves the indicators are causal — no future data leaks into a past bar's value. It says nothing about whether the screen's thresholds, weights, or the backtest's rule are any good; that question is still open per the two points above.
 - Module-by-module and per-day limitations (each gate's real or synthetic match, GULFOILLUB's parametric VaR rejected by the Kupiec test at both 95% and 99%, the flat trading-cost model, the any-stock verification on three tickers) are kept in full in [`docs/limitations.md`](docs/limitations.md).

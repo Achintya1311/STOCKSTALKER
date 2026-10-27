@@ -37,6 +37,13 @@ OUTPUT_DIR = ROOT / "outputs"
 DEFAULT_THRESHOLD = 0.5  # score >= 0.5 means the blend of signals is non-negative
 DEFAULT_RANDOM_EXPOSURE_DRAWS = 2000
 
+# R29: the daily-snapshot workflow appends EOD bars here; nothing else reads them.
+SNAPSHOT_PATH = ROOT / "data" / "snapshots" / "2026.csv"
+# The signal math and weights were last changed on 7 Sep 2026 (d9c675a,
+# b9038a2) and the fixtures end on 4 Sep, so bars after this date are the
+# only days the rule was not chosen on.
+RULE_FROZEN_ON = "2026-09-07"
+
 # Indian delivery-equity costs. STT is charged on both legs of a delivery
 # trade; stamp duty only on the buy leg (both NSE, as of this writing).
 STT_RATE = 0.001
@@ -270,6 +277,111 @@ def backtest_ticker(
         "exposure_matched_std_return": round(exposure_matched_std_return, 4),
         "beat_exposure_matched_random": strategy_cum > exposure_matched_mean_return,
         "exposure_matched_percentile": round(exposure_matched_percentile, 4),
+    }
+
+
+def load_snapshot_bars(ticker: str, path: Path = SNAPSHOT_PATH) -> pd.DataFrame:
+    """One ticker's EOD bars from the daily snapshot file, oldest first.
+
+    A rerun of the workflow on the same day rewrites that day's row, so the
+    last row for a date wins. Rows with a missing price (yfinance sometimes
+    returns a NaN last bar and the workflow commits it) are dropped, so the
+    next kept bar's return spans the gap; ``bars.attrs["dropped_nan_rows"]``
+    says how many.
+    """
+    cols = ["open", "high", "low", "close", "volume"]
+    if not Path(path).exists():
+        return pd.DataFrame(columns=cols, index=pd.DatetimeIndex([], name="date"))
+    raw = pd.read_csv(path)
+    raw = raw[raw["ticker"] == ticker].drop_duplicates("date", keep="last")
+    bars = raw.set_index(pd.DatetimeIndex(pd.to_datetime(raw["date"]), name="date"))[cols]
+    bars = bars.sort_index().astype(float)
+    priced = bars[["open", "high", "low", "close"]].notna().all(axis=1)
+    kept = bars[priced]
+    kept.attrs["dropped_nan_rows"] = int((~priced).sum())
+    return kept
+
+
+def extend_with_snapshots(df: pd.DataFrame, snapshots: pd.DataFrame) -> pd.DataFrame:
+    """Fixture bars, then every snapshot bar dated after the fixture's last bar.
+
+    Where the two overlap (the fixtures' last day) the fixture bar is kept.
+    """
+    newer = snapshots[snapshots.index > df.index[-1]]
+    out = pd.concat([df, newer.astype(df.dtypes.to_dict())])
+    return out[~out.index.duplicated(keep="first")]
+
+
+def out_of_sample_ticker(
+    ticker: str,
+    provider_name: str,
+    cfg: dict[str, Any],
+    threshold: float = DEFAULT_THRESHOLD,
+    slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
+    snapshot_path: Path = SNAPSHOT_PATH,
+    frozen_on: str = RULE_FROZEN_ON,
+) -> dict[str, Any]:
+    """The frozen rule scored only on days after ``frozen_on`` (R29).
+
+    Scores are walk-forward over fixtures plus snapshots, so the signal on
+    the first out-of-sample day still sees its full history. Only the
+    returns earned after the freeze are counted, against buy-and-hold and
+    random same-size exposure over exactly those days.
+    """
+    snapshots = load_snapshot_bars(ticker, snapshot_path)
+    df = extend_with_snapshots(load(ticker, provider=provider_name), snapshots)
+    after = df.index > pd.Timestamp(frozen_on)
+    if not after.any():
+        raise ProviderError(f"{ticker}: no snapshot bars after {frozen_on}")
+    start_idx = int(np.argmax(after))
+    scores = walk_forward_scores(df, cfg)
+    gross = long_flat_returns(df, scores, threshold)[after]
+    net = long_flat_returns_with_costs(df, scores, threshold, slippage_bps)[after]
+    days_long = int(holdings_from_scores(scores, threshold)[after].sum())
+    strategy_cum = cumulative_return(gross)
+    hold_cum = float(df["close"].iloc[-1] / df["close"].iloc[start_idx - 1] - 1.0)
+    draws = random_exposure_returns(df, start_idx, days_long, seed=zlib.crc32(ticker.encode()))
+    return {
+        "ticker": ticker,
+        "start": df.index[start_idx].date().isoformat(),
+        "end": df.index[-1].date().isoformat(),
+        "days_tested": int(after.sum()),
+        "days_long": days_long,
+        "snapshot_rows_dropped_nan": snapshots.attrs.get("dropped_nan_rows", 0),
+        "strategy_return": round(strategy_cum, 4),
+        "strategy_return_with_costs": round(cumulative_return(net), 4),
+        "buy_and_hold_return": round(hold_cum, 4),
+        "exposure_matched_mean_return": round(float(draws.mean()), 4),
+        # Never long means nothing to compare: no percentile rather than a fake 0%.
+        "exposure_matched_percentile": round(float((draws < strategy_cum).mean()), 4) if days_long else None,
+    }
+
+
+def run_out_of_sample(
+    tickers: list[str],
+    provider_name: str,
+    cfg: dict[str, Any],
+    threshold: float = DEFAULT_THRESHOLD,
+    errors: list[str] | None = None,
+    slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
+    snapshot_path: Path = SNAPSHOT_PATH,
+) -> dict[str, Any]:
+    if errors is None:
+        errors = []
+    results = []
+    for ticker in tickers:
+        try:
+            results.append(out_of_sample_ticker(ticker, provider_name, cfg, threshold, slippage_bps, snapshot_path))
+        except ProviderError as exc:
+            errors.append(f"{ticker} (out of sample): {exc}")
+    return {
+        "rule_frozen_on": RULE_FROZEN_ON,
+        "snapshot_file": str(Path(snapshot_path).relative_to(ROOT)) if Path(snapshot_path).is_relative_to(ROOT) else str(snapshot_path),
+        "results": results,
+        "tickers_beating_exposure_matched_random": sum(
+            1 for r in results if r["days_long"] and r["strategy_return"] > r["exposure_matched_mean_return"]
+        ),
+        "tickers_never_long": sum(1 for r in results if not r["days_long"]),
     }
 
 
@@ -523,6 +635,27 @@ def print_report(report: dict[str, Any], errors: list[str]) -> None:
             f"  {s['tickers_beating_exposure_matched_random']}/{s['tickers_tested']} beat being long this often, "
             "on these days, vs. being long this often at random"
         )
+    oos = report.get("out_of_sample")
+    if oos:
+        print(f"  Out of sample (days after the rule froze on {oos['rule_frozen_on']}, from {oos['snapshot_file']}):")
+        for r in oos["results"]:
+            print(
+                f"  {r['ticker']:<14} strategy {r['strategy_return']:+.2%} -> {r['strategy_return_with_costs']:+.2%} "
+                f"with costs  buy&hold {r['buy_and_hold_return']:+.2%}  "
+                f"{r['days_long']}/{r['days_tested']} days long, {r['start']} to {r['end']} "
+                f"({r['snapshot_rows_dropped_nan']} snapshot days with no price skipped); "
+                + (
+                    f"random-exposure mean {r['exposure_matched_mean_return']:+.2%}, "
+                    f"{r['exposure_matched_percentile']:.0%} percentile"
+                    if r["days_long"]
+                    else "never long, so no random comparison"
+                )
+            )
+        print(
+            f"  {oos['tickers_beating_exposure_matched_random']}/{len(oos['results']) - oos['tickers_never_long']} "
+            f"beat random same-size exposure out of sample ({oos['tickers_never_long']} never long; "
+            "a few weeks per name: too short to say anything on its own)"
+        )
     for e in errors:
         print(f"  ! {e}")
 
@@ -546,6 +679,11 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_SLIPPAGE_BPS,
         help="slippage in basis points, charged on each entry and exit (default 10)",
     )
+    parser.add_argument(
+        "--out-of-sample",
+        action="store_true",
+        help="also score the frozen rule on data/snapshots bars after RULE_FROZEN_ON (R29)",
+    )
     args = parser.parse_args(argv)
 
     if args.live and args.offline:
@@ -564,6 +702,11 @@ def main(argv: list[str] | None = None) -> int:
     report = run_backtest(
         tickers, provider_name, cfg, args.threshold, generated, errors, args.slippage_bps
     )
+
+    if args.out_of_sample:
+        report["out_of_sample"] = run_out_of_sample(
+            tickers, provider_name, cfg, args.threshold, errors, args.slippage_bps
+        )
 
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
