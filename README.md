@@ -4,7 +4,7 @@ Educational research on historical data. Not investment advice. Not a SEBI-regis
 
 **Question:** does the daily trend/momentum/volume screen beat simply buying and holding, once realistic Indian delivery-equity trading costs are included?
 **Method:** a walk-forward long/flat backtest — long the next day only when yesterday's blended screen score clears 0.5, no shorting — over three NSE names (RELIANCE, TATACHEM, CROMPTON), 14 Nov 2024 to 4 Sep 2026 (450 tested days each), costed at 0.1% STT per side, 0.015% stamp duty on buys, and 10bps slippage.
-**Finding (Day 58, the honest one):** only 1 of 3 names beats being long this often, on these days, vs. being long the same number of days at random — down from "2 of 3 beat 100%-exposure buy-and-hold" (Day 7), and down to 1 of 3 vs. buy-and-hold once costs are included too (mean −17.75% vs. −23.72%, Day 8). Full tables in Findings below.
+**Finding (Day 58, the honest one):** only 1 of 3 names beats being long this often, on these days, vs. being long the same number of days at random — down from "2 of 3 beat 100%-exposure buy-and-hold" (Day 7), and down to 1 of 3 vs. buy-and-hold once costs are included too (mean −17.75% vs. −23.72%, Day 8). That count is for the default 0.5 threshold: across five fixed thresholds it runs from 0 to 2 of 3 (R31). On the 25 days since the rule froze, 0 of the 2 names that were ever long beat random (R29). Full tables in Findings below.
 **Chart:** `outputs/tearsheet_GULFOILLUB_<date>.md` lists the three charts `stockstalker.run` writes to `outputs/` — GULFOILLUB vs. peers rebased to 100, drawdown from peak, rolling 1y volatility.
 **Reproduce:** `python -m stockstalker.backtest --offline` (the finding above) or `python -m stockstalker.run --ticker GULFOILLUB --offline` (the front door below).
 
@@ -285,6 +285,29 @@ drops out of the Day 7 "2 of 3"), 1 of 3 after costs, and 1 of 3 beats
 random exposure, with the same name, TATACHEM, at the 89th percentile. The
 default stays signal-close so the earlier tables reproduce; both
 conventions are a `--fill` flag away.
+
+### Threshold grid — the headline is one cell (R31)
+
+The rule goes long when yesterday's score is at least 0.5, a Day 7 choice
+that was not tuned. Moving it changes the answer, so
+`python -m stockstalker.backtest --offline --threshold-grid` reruns the same
+backtest at five fixed thresholds and reports every one (percentile of the
+strategy's days against 2,000 random same-size exposures; 27 Oct 2026):
+
+| Threshold | Beat random | Beat buy-and-hold with costs | RELIANCE | TATACHEM | CROMPTON |
+|---|---|---|---|---|---|
+| 0.40 | 0/3 | 1/3 | 2nd | 43rd | 8th |
+| 0.45 | 1/3 | 1/3 | 3rd | 74th | 12th |
+| **0.50 (default)** | **1/3** | **1/3** | **38th** | **90th** | **5th** |
+| 0.55 | 2/3 | 3/3 | 81st | 81st | 12th |
+| 0.60 | 2/3 | 2/3 | 68th | 11th | 70th |
+
+The count that beats random runs from 0 of 3 to 2 of 3 across the grid,
+and the name that carries it changes: TATACHEM is at the 90th percentile at
+0.50 and the 11th at 0.60. No cell puts a name above the 90th percentile.
+So "1 of 3" describes the default threshold, not the rule. With next-open
+fills (`--fill next-open --threshold-grid`) the counts are 1, 1, 1, 2 and 2
+of 3.
 
 ### Day 8 — the same table with costs
 

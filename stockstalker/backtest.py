@@ -40,6 +40,9 @@ DEFAULT_RANDOM_EXPOSURE_DRAWS = 2000
 # (the Day 7 convention, kept as the default); "next-open" fills at the
 # following session's open, which a daily close-based signal can actually do.
 FILLS = ("signal-close", "next-open")
+# R31: a fixed grid around the Day 7 default, set in the critique that asked for it.
+# Every cell is reported; the default was chosen on Day 7, not tuned.
+THRESHOLD_GRID = (0.40, 0.45, 0.50, 0.55, 0.60)
 DEFAULT_FILL = "signal-close"
 
 # R29: the daily-snapshot workflow appends EOD bars here; nothing else reads them.
@@ -274,6 +277,7 @@ def backtest_ticker(
     threshold: float = DEFAULT_THRESHOLD,
     slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
     fill: str = DEFAULT_FILL,
+    scores: pd.Series | None = None,
 ) -> dict[str, Any]:
     """Walk-forward strategy vs. buy-and-hold for one ticker, same tested window for both.
 
@@ -288,7 +292,8 @@ def backtest_ticker(
             f"{ticker}: only {len(df)} bars, need more than {burn_in + 1} for burn-in"
         )
 
-    scores = walk_forward_scores(df, cfg)
+    if scores is None:  # the threshold grid passes them in: scores don't depend on it
+        scores = walk_forward_scores(df, cfg)
     strategy_returns = long_flat_returns(df, scores, threshold, fill).iloc[burn_in + 1 :]
     strategy_returns_with_costs = long_flat_returns_with_costs(
         df, scores, threshold, slippage_bps, fill
@@ -442,6 +447,42 @@ def run_out_of_sample(
         ),
         "tickers_never_long": sum(1 for r in results if not r["days_long"]),
     }
+
+
+def run_threshold_grid(
+    tickers: list[str],
+    provider_name: str,
+    cfg: dict[str, Any],
+    grid: tuple[float, ...] = THRESHOLD_GRID,
+    errors: list[str] | None = None,
+    slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
+    fill: str = DEFAULT_FILL,
+) -> list[dict[str, Any]]:
+    """The same backtest at every threshold in ``grid`` (R31), scores computed once per ticker."""
+    if errors is None:
+        errors = []
+    scores = {}
+    for ticker in tickers:
+        try:
+            scores[ticker] = walk_forward_scores(load(ticker, provider=provider_name), cfg)
+        except ProviderError as exc:
+            errors.append(f"{ticker} (threshold grid): {exc}")
+    rows = []
+    for threshold in grid:
+        results = [
+            backtest_ticker(t, provider_name, cfg, threshold, slippage_bps, fill, scores=sc)
+            for t, sc in scores.items()
+        ]
+        rows.append({
+            "threshold": threshold,
+            "default": threshold == DEFAULT_THRESHOLD,
+            "tickers_tested": len(results),
+            "tickers_beating_buy_and_hold_with_costs": sum(r["beat_buy_and_hold_with_costs"] for r in results),
+            "tickers_beating_exposure_matched_random": sum(r["beat_exposure_matched_random"] for r in results),
+            "days_long": {r["ticker"]: r["days_long"] for r in results},
+            "percentiles": {r["ticker"]: r["exposure_matched_percentile"] for r in results},
+        })
+    return rows
 
 
 def run_backtest(
@@ -699,6 +740,16 @@ def print_report(report: dict[str, Any], errors: list[str]) -> None:
             f"  {s['tickers_beating_exposure_matched_random']}/{s['tickers_tested']} beat being long this often, "
             "on these days, vs. being long this often at random"
         )
+    grid = report.get("threshold_grid")
+    if grid:
+        print("  Threshold grid (fixed grid, every cell reported; * = default; percentile vs. random same-size exposure):")
+        for row in grid:
+            cells = ", ".join(f"{t.split('.')[0]} {p:.0%}" for t, p in row["percentiles"].items())
+            print(
+                f"  {'*' if row['default'] else ' '} {row['threshold']:.2f}  "
+                f"{row['tickers_beating_exposure_matched_random']}/{row['tickers_tested']} beat random, "
+                f"{row['tickers_beating_buy_and_hold_with_costs']}/{row['tickers_tested']} beat buy-and-hold with costs  ({cells})"
+            )
     oos = report.get("out_of_sample")
     if oos:
         print(f"  Out of sample (days after the rule froze on {oos['rule_frozen_on']}, from {oos['snapshot_file']}):")
@@ -754,6 +805,11 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_FILL,
         help="trade at the signal's own close (default, the Day 7 convention) or the next open (R30)",
     )
+    parser.add_argument(
+        "--threshold-grid",
+        action="store_true",
+        help=f"also run every threshold in {THRESHOLD_GRID} and report each cell (R31)",
+    )
     args = parser.parse_args(argv)
 
     if args.live and args.offline:
@@ -773,6 +829,10 @@ def main(argv: list[str] | None = None) -> int:
         tickers, provider_name, cfg, args.threshold, generated, errors, args.slippage_bps, args.fill
     )
 
+    if args.threshold_grid:
+        report["threshold_grid"] = run_threshold_grid(
+            tickers, provider_name, cfg, errors=errors, slippage_bps=args.slippage_bps, fill=args.fill
+        )
     if args.out_of_sample:
         report["out_of_sample"] = run_out_of_sample(
             tickers, provider_name, cfg, args.threshold, errors, args.slippage_bps, fill=args.fill
