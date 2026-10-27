@@ -264,6 +264,28 @@ in-sample result. The segment grows by one bar a day; rerun the command
 for the current numbers. Data caveats are under Data sources (skipped
 NaN bars, an unverified TATACHEM bar on 15 Sep).
 
+### Fill timing — the signal's own close vs. the next open (R30)
+
+Every table above fills at the close the score was computed from: the
+score is known at the close of day t and the trade happens at that same
+close. No one can trade at a price they are still computing a signal from,
+so `--fill next-open` buys and sells at the next session's open instead
+(entry day earns open to close; the first flat day earns the overnight
+move to the open it sold at). The random-exposure draws are priced the same
+way. `python -m stockstalker.backtest --offline --fill next-open`, 27 Oct 2026:
+
+| Ticker | Strategy, signal-close (no cost → costs) | Strategy, next-open (no cost → costs) | Random percentile, close → open |
+|---|---|---|---|
+| RELIANCE.NS | −1.85% → −10.45% | −6.24% → −14.46% | 38th → 27th |
+| TATACHEM.NS | +4.62% → −1.32% | +6.36% → +0.32% | 90th → 89th |
+| CROMPTON.NS | −35.32% → −41.49% | −38.34% → −44.23% | 5th → 4th |
+
+With next-open fills, **1 of 3** beats buy-and-hold before costs (CROMPTON
+drops out of the Day 7 "2 of 3"), 1 of 3 after costs, and 1 of 3 beats
+random exposure, with the same name, TATACHEM, at the 89th percentile. The
+default stays signal-close so the earlier tables reproduce; both
+conventions are a `--fill` flag away.
+
 ### Day 8 — the same table with costs
 
 The no-cost numbers above were never realistic: daily rebalancing pays STT
@@ -337,6 +359,7 @@ portfolio carries (see `PLAN.md` rule 1).
 - The ticker universe is today's list. Names that delisted or were removed are absent, so any historical result carries survivorship bias. Stated rather than corrected.
 - Technical signals describe how a price has behaved, not what a business is worth. Nothing here is a valuation, and nothing here is a recommendation.
 - The Alpha Vantage free tier is 25 requests/day. Live runs across a real universe are rate-limited by design, which is why the fixture path exists.
+- The backtest's default fill is the close the signal was computed from, which cannot be traded in practice; `--fill next-open` (Findings, "Fill timing") is the tradeable version and is worse on two of three names. Neither models the open auction's own spread.
 - Any backtest in this repo is in-sample unless the README says otherwise in that specific section. The one out-of-sample segment (Findings, "Out of sample") covers a few weeks of snapshots, too short to test the rule on its own.
 - The screener's signal weights (`config/screen.yaml`) and each signal's internal blend (e.g. RSI/MACD 50/50 inside momentum) are hand-picked, not fit or optimized against anything. Day 7's walk-forward backtest against buy-and-hold (see Findings) found no clear edge — 2 of 3 tickers beat buy-and-hold, but only by losing less, and the strategy still lost to buy-and-hold on the one name that rose. Day 58's exposure-matched baseline (see Findings) is harder on the same backtest: only 1 of 3 beats being long this often, on these days, vs. being long the same number of days at random — CROMPTON's Day 7 "beat buy-and-hold" ranks in the bottom 5% of random same-length exposures, i.e. its 138 chosen days were worse than a random 138 days, not better. Any future re-tuning of these weights against this same fixture window would be in-sample.
 - The pipeline audit (`python -m stockstalker.audit`) only proves the indicators are causal — no future data leaks into a past bar's value. It says nothing about whether the screen's thresholds, weights, or the backtest's rule are any good; that question is still open per the two points above.

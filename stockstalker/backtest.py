@@ -36,6 +36,11 @@ OUTPUT_DIR = ROOT / "outputs"
 
 DEFAULT_THRESHOLD = 0.5  # score >= 0.5 means the blend of signals is non-negative
 DEFAULT_RANDOM_EXPOSURE_DRAWS = 2000
+# R30: "signal-close" buys and sells at the close the score was computed on
+# (the Day 7 convention, kept as the default); "next-open" fills at the
+# following session's open, which a daily close-based signal can actually do.
+FILLS = ("signal-close", "next-open")
+DEFAULT_FILL = "signal-close"
 
 # R29: the daily-snapshot workflow appends EOD bars here; nothing else reads them.
 SNAPSHOT_PATH = ROOT / "data" / "snapshots" / "2026.csv"
@@ -85,16 +90,50 @@ def walk_forward_scores(df: pd.DataFrame, cfg: dict[str, Any]) -> pd.Series:
     return scores
 
 
-def long_flat_returns(df: pd.DataFrame, scores: pd.Series, threshold: float) -> pd.Series:
+def _held_returns(open_: np.ndarray, close: np.ndarray, prev_close: np.ndarray,
+                  held: np.ndarray, prev_held: np.ndarray, fill: str) -> np.ndarray:
+    """Daily returns of a long/flat holding pattern under one fill convention.
+
+    ``held`` marks the days the position is on (decided at the previous
+    close). Under "signal-close" every held day earns close-to-close. Under
+    "next-open" an entry day earns open-to-close, a continuing day
+    close-to-close, and the first flat day after a hold earns the move from
+    the last close to the open it was sold at. Works on 1-D or (draws, days)
+    arrays.
+    """
+    if fill not in FILLS:
+        raise ValueError(f"fill must be one of {FILLS}, got {fill!r}")
+    c2c = close / prev_close - 1.0
+    if fill == "signal-close":
+        return np.where(held, c2c, 0.0)
+    entry = held & ~prev_held
+    cont = held & prev_held
+    exit_ = ~held & prev_held
+    return (
+        np.where(entry, close / open_ - 1.0, 0.0)
+        + np.where(cont, c2c, 0.0)
+        + np.where(exit_, open_ / prev_close - 1.0, 0.0)
+    )
+
+
+def long_flat_returns(
+    df: pd.DataFrame, scores: pd.Series, threshold: float, fill: str = DEFAULT_FILL
+) -> pd.Series:
     """Next-bar return, earned only when the *prior* bar's score cleared ``threshold``.
 
     Long/flat, no shorting, no leverage, no costs. A score known at the
-    close of day t decides whether day t+1's return is captured — the
-    signal never trades the bar it was computed on.
+    close of day t decides whether day t+1 is held. With the default
+    "signal-close" fill the trade happens at that same close, the price the
+    score was computed from; "next-open" fills at day t+1's open (R30).
     """
-    daily_return = df["close"].pct_change()
-    position = (scores >= threshold).astype(float)
-    return (position.shift(1) * daily_return).fillna(0.0)
+    held = holdings_from_scores(scores, threshold).to_numpy()
+    prev_held = np.concatenate([[False], held[:-1]])
+    close = df["close"].to_numpy(dtype=float)
+    prev_close = np.concatenate([[np.nan], close[:-1]])
+    # The default path needs only closes, so close-only frames still work.
+    open_ = df["open"].to_numpy(dtype=float) if fill == "next-open" else close
+    out = _held_returns(open_, close, prev_close, held, prev_held, fill)
+    return pd.Series(out, index=df.index).fillna(0.0)
 
 
 def holdings_from_scores(scores: pd.Series, threshold: float) -> pd.Series:
@@ -135,9 +174,10 @@ def long_flat_returns_with_costs(
     scores: pd.Series,
     threshold: float,
     slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
+    fill: str = DEFAULT_FILL,
 ) -> pd.Series:
     """``long_flat_returns``, minus STT, stamp duty and slippage on every trade."""
-    gross = long_flat_returns(df, scores, threshold)
+    gross = long_flat_returns(df, scores, threshold, fill)
     holdings = holdings_from_scores(scores, threshold)
     slippage_rate = slippage_bps / 10_000
     buy_cost_rate = STT_RATE + STAMP_DUTY_RATE + slippage_rate
@@ -186,6 +226,7 @@ def random_exposure_returns(
     days_long: int,
     n_draws: int = DEFAULT_RANDOM_EXPOSURE_DRAWS,
     seed: int | None = None,
+    fill: str = DEFAULT_FILL,
 ) -> np.ndarray:
     """Cumulative return of being long ``days_long`` of the tested days, picked at random.
 
@@ -209,8 +250,21 @@ def random_exposure_returns(
     # Python-level loop over draws.
     ranks = rng.random((n_draws, n))
     chosen = np.argsort(ranks, axis=1)[:, :days_long]
-    selected_returns = daily_return[chosen]
-    return np.prod(1.0 + selected_returns, axis=1) - 1.0
+    if fill == DEFAULT_FILL:
+        selected_returns = daily_return[chosen]
+        return np.prod(1.0 + selected_returns, axis=1) - 1.0
+    # Same draws, priced with the fill convention: entries and exits depend
+    # on which neighbouring days were also drawn. The day before the window
+    # counts as flat.
+    held = np.zeros((n_draws, n), dtype=bool)
+    np.put_along_axis(held, chosen, True, axis=1)
+    prev_held = np.concatenate([np.zeros((n_draws, 1), dtype=bool), held[:, :-1]], axis=1)
+    close = df["close"].to_numpy(dtype=float)
+    returns = _held_returns(
+        df["open"].to_numpy(dtype=float)[start_idx:], close[start_idx:],
+        close[start_idx - 1:-1], held, prev_held, fill,
+    )
+    return np.prod(1.0 + returns, axis=1) - 1.0
 
 
 def backtest_ticker(
@@ -219,6 +273,7 @@ def backtest_ticker(
     cfg: dict[str, Any],
     threshold: float = DEFAULT_THRESHOLD,
     slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
+    fill: str = DEFAULT_FILL,
 ) -> dict[str, Any]:
     """Walk-forward strategy vs. buy-and-hold for one ticker, same tested window for both.
 
@@ -234,9 +289,9 @@ def backtest_ticker(
         )
 
     scores = walk_forward_scores(df, cfg)
-    strategy_returns = long_flat_returns(df, scores, threshold).iloc[burn_in + 1 :]
+    strategy_returns = long_flat_returns(df, scores, threshold, fill).iloc[burn_in + 1 :]
     strategy_returns_with_costs = long_flat_returns_with_costs(
-        df, scores, threshold, slippage_bps
+        df, scores, threshold, slippage_bps, fill
     ).iloc[burn_in + 1 :]
     strategy_cum = cumulative_return(strategy_returns)
     strategy_cum_with_costs = cumulative_return(strategy_returns_with_costs)
@@ -252,7 +307,7 @@ def backtest_ticker(
     # every day". Seeded from the ticker name so the same ticker always
     # draws the same random subsets (reproducible, not a fresh roll per run).
     seed = zlib.crc32(ticker.encode())
-    random_draws = random_exposure_returns(df, burn_in + 1, days_long, seed=seed)
+    random_draws = random_exposure_returns(df, burn_in + 1, days_long, seed=seed, fill=fill)
     exposure_matched_mean_return = float(random_draws.mean())
     exposure_matched_std_return = (
         float(random_draws.std(ddof=1)) if len(random_draws) > 1 else 0.0
@@ -320,6 +375,7 @@ def out_of_sample_ticker(
     slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
     snapshot_path: Path = SNAPSHOT_PATH,
     frozen_on: str = RULE_FROZEN_ON,
+    fill: str = DEFAULT_FILL,
 ) -> dict[str, Any]:
     """The frozen rule scored only on days after ``frozen_on`` (R29).
 
@@ -335,12 +391,12 @@ def out_of_sample_ticker(
         raise ProviderError(f"{ticker}: no snapshot bars after {frozen_on}")
     start_idx = int(np.argmax(after))
     scores = walk_forward_scores(df, cfg)
-    gross = long_flat_returns(df, scores, threshold)[after]
-    net = long_flat_returns_with_costs(df, scores, threshold, slippage_bps)[after]
+    gross = long_flat_returns(df, scores, threshold, fill)[after]
+    net = long_flat_returns_with_costs(df, scores, threshold, slippage_bps, fill)[after]
     days_long = int(holdings_from_scores(scores, threshold)[after].sum())
     strategy_cum = cumulative_return(gross)
     hold_cum = float(df["close"].iloc[-1] / df["close"].iloc[start_idx - 1] - 1.0)
-    draws = random_exposure_returns(df, start_idx, days_long, seed=zlib.crc32(ticker.encode()))
+    draws = random_exposure_returns(df, start_idx, days_long, seed=zlib.crc32(ticker.encode()), fill=fill)
     return {
         "ticker": ticker,
         "start": df.index[start_idx].date().isoformat(),
@@ -365,13 +421,16 @@ def run_out_of_sample(
     errors: list[str] | None = None,
     slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
     snapshot_path: Path = SNAPSHOT_PATH,
+    fill: str = DEFAULT_FILL,
 ) -> dict[str, Any]:
     if errors is None:
         errors = []
     results = []
     for ticker in tickers:
         try:
-            results.append(out_of_sample_ticker(ticker, provider_name, cfg, threshold, slippage_bps, snapshot_path))
+            results.append(
+                out_of_sample_ticker(ticker, provider_name, cfg, threshold, slippage_bps, snapshot_path, fill=fill)
+            )
         except ProviderError as exc:
             errors.append(f"{ticker} (out of sample): {exc}")
     return {
@@ -393,6 +452,7 @@ def run_backtest(
     generated: str | None = None,
     errors: list[str] | None = None,
     slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
+    fill: str = DEFAULT_FILL,
 ) -> dict[str, Any]:
     """Backtest every ticker, dropping (and recording) the ones that fail to fetch."""
     if errors is None:
@@ -400,7 +460,7 @@ def run_backtest(
     results = []
     for ticker in tickers:
         try:
-            results.append(backtest_ticker(ticker, provider_name, cfg, threshold, slippage_bps))
+            results.append(backtest_ticker(ticker, provider_name, cfg, threshold, slippage_bps, fill))
         except ProviderError as exc:
             errors.append(f"{ticker}: {exc}")
 
@@ -444,6 +504,7 @@ def run_backtest(
         "schema": "backtest-v1",
         "generated": generated or date.today().isoformat(),
         "threshold": threshold,
+        "fill": fill,
         "source": provider_name,
         "slippage_bps": slippage_bps,
         "costs": {
@@ -604,7 +665,10 @@ def write_markdown(report: dict[str, Any], errors: list[str], path: Path) -> Non
 def print_report(report: dict[str, Any], errors: list[str]) -> None:
     s = report["summary"]
     slippage_bps = report.get("slippage_bps", DEFAULT_SLIPPAGE_BPS)
-    print(f"Backtest {report['generated']} — threshold {report['threshold']} ({report['source']})")
+    print(
+        f"Backtest {report['generated']} — threshold {report['threshold']}, "
+        f"fill {report.get('fill', DEFAULT_FILL)} ({report['source']})"
+    )
     print(f"  costs: STT {STT_RATE:.2%}/side, stamp duty {STAMP_DUTY_RATE:.3%} (buy only), slippage {slippage_bps:.0f}bps")
     for r in report["results"]:
         verdict = "beats" if r["beat_buy_and_hold"] else "loses to"
@@ -684,6 +748,12 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="also score the frozen rule on data/snapshots bars after RULE_FROZEN_ON (R29)",
     )
+    parser.add_argument(
+        "--fill",
+        choices=FILLS,
+        default=DEFAULT_FILL,
+        help="trade at the signal's own close (default, the Day 7 convention) or the next open (R30)",
+    )
     args = parser.parse_args(argv)
 
     if args.live and args.offline:
@@ -700,12 +770,12 @@ def main(argv: list[str] | None = None) -> int:
 
     errors: list[str] = []
     report = run_backtest(
-        tickers, provider_name, cfg, args.threshold, generated, errors, args.slippage_bps
+        tickers, provider_name, cfg, args.threshold, generated, errors, args.slippage_bps, args.fill
     )
 
     if args.out_of_sample:
         report["out_of_sample"] = run_out_of_sample(
-            tickers, provider_name, cfg, args.threshold, errors, args.slippage_bps
+            tickers, provider_name, cfg, args.threshold, errors, args.slippage_bps, fill=args.fill
         )
 
     out_dir = Path(args.output_dir)
