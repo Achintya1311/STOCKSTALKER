@@ -27,6 +27,7 @@ from .data.providers import ProviderError, load
 from .signals.momentum import momentum_score
 from .signals.trend import trend_score
 from .signals.volume import volume_score
+from .disclaimer import DISCLAIMER
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "config" / "screen.yaml"
@@ -222,6 +223,8 @@ def write_markdown(screen: dict[str, Any], errors: list[str], path: Path) -> Non
         "Technical signals describe how a price has behaved, not what a business is "
         "worth. This is a shortlist for research, not a recommendation.",
         "",
+        DISCLAIMER,
+        "",
     ]
     if screen["candidates"]:
         lines.append(_markdown_table(screen))
@@ -284,6 +287,7 @@ def main(argv: list[str] | None = None) -> int:
     write_markdown(screen, errors, out_dir / f"screen_{generated}.md")
 
     print_report(screen, errors)
+    print(DISCLAIMER)
     return 0 if screen["candidates"] else 1
 
 

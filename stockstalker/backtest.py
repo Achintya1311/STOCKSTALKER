@@ -28,6 +28,7 @@ import pandas as pd
 
 from .data.providers import ProviderError, load
 from .screener import blended_score, compute_signals, load_config, load_universe
+from .disclaimer import DISCLAIMER
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "config" / "screen.yaml"
@@ -866,6 +867,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"chart: {chart}")
 
     print_report(report, errors)
+    print(DISCLAIMER)
     return 0 if report["results"] else 1
 
 

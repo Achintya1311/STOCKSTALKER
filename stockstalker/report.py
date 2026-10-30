@@ -38,6 +38,7 @@ from .gates.valuation import apply_valuation_gate, load_contract as load_valuati
 from .gates.vol import apply_vol_gate, load_contract as load_vol_contract
 from .screener import CONFIG_PATH, UNIVERSE_PATH, build_screen, load_config, load_universe
 from .viz.liquidity import plot_liquidity_heatmap
+from .disclaimer import DISCLAIMER
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = ROOT / "outputs"
@@ -417,6 +418,7 @@ def main(argv: list[str] | None = None) -> int:
 
     for e in errors:
         console.print(f"[red]![/red] {e}")
+    print(DISCLAIMER)
 
     return 0 if screen["candidates"] else 1
 

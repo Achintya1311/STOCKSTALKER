@@ -27,6 +27,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from ..disclaimer import DISCLAIMER
+
 REQUIRED_FUNDAMENTALS_KEYS = {
     "fy3_revenue_cagr",
     "fy3_ebit_margin",
@@ -96,6 +98,7 @@ def main(argv: list[str] | None = None) -> int:
             f"fundamentals gate: {args.ticker} is not in this screen's universe -- "
             f"no candidate updated, {out_path} written unchanged"
         )
+    print(DISCLAIMER)
     return 0
 
 

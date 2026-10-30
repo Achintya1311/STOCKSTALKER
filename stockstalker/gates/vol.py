@@ -29,6 +29,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from ..disclaimer import DISCLAIMER
+
 REQUIRED_VOL_KEYS = {
     "atm_iv_30d",
     "skew_25d",
@@ -98,6 +100,7 @@ def main(argv: list[str] | None = None) -> int:
             f"vol gate: {args.ticker} is not in this screen's universe -- "
             f"no candidate updated, {out_path} written unchanged"
         )
+    print(DISCLAIMER)
     return 0
 
 

@@ -22,6 +22,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from ..disclaimer import DISCLAIMER
+
 REQUIRED_FACTOR_KEYS = {
     "alpha_annual",
     "alpha_t",
@@ -127,6 +129,7 @@ def main(argv: list[str] | None = None) -> int:
             f"factor gate: {args.ticker} is not in this screen's universe -- "
             f"no candidate updated, {out_path} written unchanged"
         )
+    print(DISCLAIMER)
     return 0
 
 

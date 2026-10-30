@@ -20,6 +20,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from ..disclaimer import DISCLAIMER
+
 REQUIRED_RISK_KEYS = {
     "var_95",
     "cvar_95",
@@ -180,6 +182,7 @@ def main(argv: list[str] | None = None) -> int:
             f"risk gate: {args.ticker} is not in this screen's universe -- "
             f"no candidate updated, {out_path} written unchanged"
         )
+    print(DISCLAIMER)
     return 0
 
 

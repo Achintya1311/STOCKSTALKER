@@ -22,6 +22,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from ..disclaimer import DISCLAIMER
+
 REQUIRED_SIZING_KEYS = {
     "weight",
     "method",
@@ -88,6 +90,7 @@ def main(argv: list[str] | None = None) -> int:
             f"sizing gate: {args.ticker} is not in this screen's universe -- "
             f"no candidate updated, {out_path} written unchanged"
         )
+    print(DISCLAIMER)
     return 0
 
 
