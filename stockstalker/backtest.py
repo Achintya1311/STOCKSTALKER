@@ -278,6 +278,7 @@ def backtest_ticker(
     slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
     fill: str = DEFAULT_FILL,
     scores: pd.Series | None = None,
+    keep_draws: bool = False,
 ) -> dict[str, Any]:
     """Walk-forward strategy vs. buy-and-hold for one ticker, same tested window for both.
 
@@ -319,7 +320,7 @@ def backtest_ticker(
     )
     exposure_matched_percentile = float((random_draws < strategy_cum).mean())
 
-    return {
+    result = {
         "ticker": ticker,
         "start": df.index[burn_in].date().isoformat(),
         "end": df.index[-1].date().isoformat(),
@@ -338,6 +339,9 @@ def backtest_ticker(
         "beat_exposure_matched_random": strategy_cum > exposure_matched_mean_return,
         "exposure_matched_percentile": round(exposure_matched_percentile, 4),
     }
+    if keep_draws:  # for the --chart plot (P138); never written to the report
+        result["random_draws"] = random_draws
+    return result
 
 
 def load_snapshot_bars(ticker: str, path: Path = SNAPSHOT_PATH) -> pd.DataFrame:
@@ -494,6 +498,7 @@ def run_backtest(
     errors: list[str] | None = None,
     slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
     fill: str = DEFAULT_FILL,
+    keep_draws: bool = False,
 ) -> dict[str, Any]:
     """Backtest every ticker, dropping (and recording) the ones that fail to fetch."""
     if errors is None:
@@ -501,7 +506,9 @@ def run_backtest(
     results = []
     for ticker in tickers:
         try:
-            results.append(backtest_ticker(ticker, provider_name, cfg, threshold, slippage_bps, fill))
+            results.append(
+                backtest_ticker(ticker, provider_name, cfg, threshold, slippage_bps, fill, keep_draws=keep_draws)
+            )
         except ProviderError as exc:
             errors.append(f"{ticker}: {exc}")
 
@@ -810,6 +817,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help=f"also run every threshold in {THRESHOLD_GRID} and report each cell (R31)",
     )
+    parser.add_argument(
+        "--chart",
+        action="store_true",
+        help="also draw each name's random same-size exposure draws with the screen's own return marked (P138)",
+    )
     args = parser.parse_args(argv)
 
     if args.live and args.offline:
@@ -826,8 +838,12 @@ def main(argv: list[str] | None = None) -> int:
 
     errors: list[str] = []
     report = run_backtest(
-        tickers, provider_name, cfg, args.threshold, generated, errors, args.slippage_bps, args.fill
+        tickers, provider_name, cfg, args.threshold, generated, errors, args.slippage_bps, args.fill,
+        keep_draws=args.chart,
     )
+    panels = [dict(r) for r in report["results"]]
+    for r in report["results"]:
+        r.pop("random_draws", None)
 
     if args.threshold_grid:
         report["threshold_grid"] = run_threshold_grid(
@@ -843,6 +859,11 @@ def main(argv: list[str] | None = None) -> int:
     write_json(report, out_dir / f"backtest_{generated}.json")
     write_csv(report, out_dir / f"backtest_{generated}.csv")
     write_markdown(report, errors, out_dir / f"backtest_{generated}.md")
+    if args.chart and panels:
+        from stockstalker.viz.random_exposure import plot_random_exposure
+
+        chart = plot_random_exposure(panels, out_dir / f"backtest_{generated}_random_exposure.png")
+        print(f"chart: {chart}")
 
     print_report(report, errors)
     return 0 if report["results"] else 1

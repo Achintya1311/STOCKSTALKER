@@ -48,6 +48,7 @@ uv venv && source .venv/bin/activate
 uv pip install -e . pytest
 pytest                                                   # 492 passed, 2 skipped on 27 Oct 2026
 python -m stockstalker.backtest --offline                # the screen findings (Days 7, 8, 58)
+python -m stockstalker.backtest --offline --chart        # the same, plus a PNG of each name's 2,000 random same-size exposures with the screen's own return marked (P138)
 python -m stockstalker.run --ticker GULFOILLUB --offline # the front door from committed fixtures
 ```
 
