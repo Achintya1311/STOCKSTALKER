@@ -32,14 +32,16 @@ def test_table_row_names_every_module_the_prose_names():
 def test_table_row_scopes_only_fundamentals_to_one_name():
     row = _table_row(_readme())
     assert "price signals for any NSE stock, full fundamentals" not in row
-    assert "any NSE stock" in row
+    assert "hand-built for one name" in row
     assert "GULFOILLUB" in row
 
 
 SCOPE = (
     "price signals, risk, factor exposure, a reverse DCF from public financials, "
-    "options for F&O stocks and headline sentiment for any NSE stock; full fundamentals are hand-built for one name"
+    "options for F&O stocks and headline sentiment where its hand-written lookup knows the company "
+    "(23 companies; none of the three verified names); full fundamentals are hand-built for one name"
 )
+LOOKUP_SIZE = 23
 
 
 def test_no_line_claims_every_module_for_any_stock():
@@ -55,3 +57,28 @@ def test_table_row_and_status_use_the_site_scope_sentence():
     assert SCOPE in _table_row(text)
     status = next(l for l in text.splitlines() if l.startswith("**Status:**"))
     assert SCOPE in status
+
+
+def test_sentiment_is_not_claimed_for_any_stock():
+    # P143 (profile critique 2026-10-30): headline-sentiment-vs-price resolves
+    # headlines with a closed lookup; RELIANCE, CASTROLIND and GULFOILLUB all
+    # show coverage none in their committed tear sheets.
+    text = _readme()
+    assert "headline sentiment for any NSE stock" not in text
+    assert f"({LOOKUP_SIZE} companies; none of the three verified names)" in text
+
+
+def test_lookup_size_matches_sibling_when_checked_out():
+    import sys
+
+    import pytest
+
+    sibling = ROOT.parent / "headline-sentiment-vs-price"
+    if not (sibling / "sentiment" / "tickers.py").exists():
+        pytest.skip("headline-sentiment-vs-price not checked out next to STOCKSTALKER")
+    sys.path.insert(0, str(sibling))
+    try:
+        from sentiment.tickers import known_companies
+    finally:
+        sys.path.remove(str(sibling))
+    assert len(known_companies()) == LOOKUP_SIZE
