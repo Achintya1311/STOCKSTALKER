@@ -61,7 +61,14 @@ def test_build_live_vol_section_against_the_real_sibling_checkout(tmp_path):
     # front door carried its real output through unchanged.
     expected = _sibling_vol_contract(iv_surface_root, tmp_path / "expected")
     for key in ("atm_iv_30d", "skew_25d", "term_slope"):
-        assert data[key] == pytest.approx(expected[key], rel=1e-9), key
+        # term_slope and skew_25d are None when the batch has too few usable
+        # expiries or strikes (volsurface.history's own contract); since the
+        # 28 Oct 2026 batch the nearest expiry has rolled off and term_slope
+        # is None, and pytest.approx(None) raised TypeError here every day.
+        if expected[key] is None:
+            assert data[key] is None, key
+        else:
+            assert data[key] == pytest.approx(expected[key], rel=1e-9), key
     assert data["iv_rank_1y"] == expected["iv_rank_1y"]
     assert 0.0 < data["atm_iv_30d"] < 2.0
 
