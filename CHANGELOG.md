@@ -1,5 +1,7 @@
 # Changelog
 
+Educational research on historical data. Not investment advice. Not a SEBI-registered research analyst.
+
 ## v0.9 one-ticker front door (package v0.9.0) — 2026-10-13
 
 One-ticker front door: every satellite module's view of GULFOILLUB in one tear

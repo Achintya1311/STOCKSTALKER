@@ -1,5 +1,7 @@
 # The front door, section by section
 
+Educational research on historical data. Not investment advice. Not a SEBI-registered research analyst.
+
 Moved from the README on 25 Oct 2026 so the README leads with the verdict. Nothing here changed.
 
 `python -m stockstalker.run --ticker <TICKER> --offline` (GULFOILLUB is the

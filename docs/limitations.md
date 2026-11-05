@@ -1,5 +1,7 @@
 # Limitations, module by module and day by day
 
+Educational research on historical data. Not investment advice. Not a SEBI-registered research analyst.
+
 Moved from the README on 25 Oct 2026 so the README leads with the verdict; the general limitations stay in the README. Every bullet is kept exactly as it was.
 
 - The v0.7 valuation gate (`stockstalker.gates.valuation`) reads reverse-dcf-engine's contract for Gulf Oil Lubricants India (GULFOILLUB), a name that is not in this repo's 3-ticker fixture universe (RELIANCE, TATACHEM, CROMPTON). Running the real integration end to end today produces zero matches — the gate logic is exercised by tests against a synthetic contract keyed to a universe ticker, but no genuine valuation figure has actually been attached to a live candidate yet. That happens only once the two repos' universes overlap, or a satellite is re-run against a shared ticker.
