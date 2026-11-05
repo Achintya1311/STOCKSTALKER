@@ -47,7 +47,9 @@ THRESHOLD_GRID = (0.40, 0.45, 0.50, 0.55, 0.60)
 DEFAULT_FILL = "signal-close"
 
 # R29: the daily-snapshot workflow appends EOD bars here; nothing else reads them.
-SNAPSHOT_PATH = ROOT / "data" / "snapshots" / "2026.csv"
+# Every data/snapshots/<year>.csv is read (P165): the writer starts a new
+# file each January.
+SNAPSHOT_PATH = ROOT / "data" / "snapshots"
 # The signal math and weights were last changed on 7 Sep 2026 (d9c675a,
 # b9038a2) and the fixtures end on 4 Sep, so bars after this date are the
 # only days the rule was not chosen on.
@@ -346,7 +348,9 @@ def backtest_ticker(
 
 
 def load_snapshot_bars(ticker: str, path: Path = SNAPSHOT_PATH) -> pd.DataFrame:
-    """One ticker's EOD bars from the daily snapshot file, oldest first.
+    """One ticker's EOD bars from the daily snapshot files, oldest first.
+
+    ``path`` is the snapshot directory (every ``<year>.csv`` in it) or one file.
 
     A rerun of the workflow on the same day rewrites that day's row, so the
     last row for a date wins. Rows with a missing price (yfinance sometimes
@@ -355,9 +359,11 @@ def load_snapshot_bars(ticker: str, path: Path = SNAPSHOT_PATH) -> pd.DataFrame:
     says how many.
     """
     cols = ["open", "high", "low", "close", "volume"]
-    if not Path(path).exists():
+    path = Path(path)
+    files = sorted(path.glob("*.csv")) if path.is_dir() else ([path] if path.exists() else [])
+    if not files:
         return pd.DataFrame(columns=cols, index=pd.DatetimeIndex([], name="date"))
-    raw = pd.read_csv(path)
+    raw = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
     raw = raw[raw["ticker"] == ticker].drop_duplicates("date", keep="last")
     bars = raw.set_index(pd.DatetimeIndex(pd.to_datetime(raw["date"]), name="date"))[cols]
     bars = bars.sort_index().astype(float)
