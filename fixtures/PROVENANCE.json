@@ -152,14 +152,14 @@
         "fixtures/chains/live/RELIANCE/2026-10-24.json (real NSE capture, data_date 2026-10-23)"
       ],
       "generated": {
-        "stockstalker_commit": "1c93ba1",
-        "date": "2026-10-26"
+        "stockstalker_commit": "c7cd24b",
+        "date": "2026-11-10"
       },
       "deterministic": true,
       "writes_side_files": true,
       "reproduced": {
-        "date": "2026-10-26",
-        "sibling_commit": "fb1f310"
+        "date": "2026-11-10",
+        "sibling_commit": "ccb3c32"
       }
     },
     "valuation/GULFOILLUB.json": {
