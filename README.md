@@ -4,7 +4,7 @@ Educational research on historical data. Not investment advice. Not a SEBI-regis
 
 **Question:** does the daily trend/momentum/volume screen beat simply buying and holding, once realistic Indian delivery-equity trading costs are included?
 **Method:** a walk-forward long/flat backtest — long the next day only when yesterday's blended screen score clears 0.5, no shorting — over three NSE names (RELIANCE, TATACHEM, CROMPTON), 14 Nov 2024 to 4 Sep 2026 (450 tested days each), costed at 0.1% STT per side, 0.015% stamp duty on buys, and 10bps slippage.
-**Finding (Day 58, the honest one):** only 1 of 3 names beats being long this often, on these days, vs. being long the same number of days at random — down from "2 of 3 beat 100%-exposure buy-and-hold" (Day 7), and down to 1 of 3 vs. buy-and-hold once costs are included too (mean −17.75% vs. −23.72%, Day 8). That count is for the default 0.5 threshold: across five fixed thresholds it runs from 0 to 2 of 3 (R31). On the 25 days since the rule froze, 0 of the 2 names that were ever long beat random (R29). Full tables in Findings below.
+**Finding (Day 58, the honest one):** only 1 of 3 names beats being long this often, on these days, vs. being long the same number of days at random — down from "2 of 3 beat 100%-exposure buy-and-hold" (Day 7), and down to 1 of 3 vs. buy-and-hold once costs are included too (mean −17.75% vs. −23.72%, Day 8). That count is for the default 0.5 threshold: across five fixed thresholds it runs from 0 to 2 of 3 (R31). On the 25 days since the rule froze (as of 27 Oct 2026), 0 of the 2 names that were ever long beat random; on 41 days as of 10 Nov 2026, 2 of 3 do, one of them (CROMPTON) on the single day it was long (R29, P185; the segment grows daily, see Out of sample). Full tables in Findings below.
 **Chart:** `outputs/tearsheet_GULFOILLUB_<date>.md` lists the three charts `stockstalker.run` writes to `outputs/` — GULFOILLUB vs. peers rebased to 100, drawdown from peak, rolling 1y volatility.
 **Reproduce:** `python -m stockstalker.backtest --offline` (the finding above) or `python -m stockstalker.run --ticker GULFOILLUB --offline` (the front door below).
 
@@ -264,6 +264,20 @@ rule from luck either way, so this neither confirms nor refutes the
 in-sample result. The segment grows by one bar a day; rerun the command
 for the current numbers. Data caveats are under Data sources (skipped
 NaN bars, an unverified TATACHEM bar on 15 Sep).
+
+Run on 10 Nov 2026, snapshots to 9 Nov 2026 (41 scored days per name; 28 Sep
+has no price and is skipped):
+
+| Ticker | Days long / scored | Strategy (no cost → costs) | Buy-and-hold | Random-exposure mean | Percentile |
+|---|---|---|---|---|---|
+| RELIANCE.NS | 6 / 41 | +0.74% → +0.12% | +1.14% | +0.55% | 61st |
+| TATACHEM.NS | 7 / 41 | −11.25% → −11.63% | −1.40% | +0.16% | 12th |
+| CROMPTON.NS | 1 / 41 | +1.50% → +1.09% | −5.25% | −0.04% | 78th |
+
+The command now prints **2/3 beat random same-size exposure out of sample**
+(P185). That count includes CROMPTON, long on one day, and RELIANCE, long on
+six; TATACHEM, the in-sample 90th-percentile name, is at the 12th. Seven or
+fewer trades per name still cannot separate the rule from luck either way.
 
 ### Fill timing — the signal's own close vs. the next open (R30)
 
