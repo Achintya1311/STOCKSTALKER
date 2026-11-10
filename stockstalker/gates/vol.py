@@ -2,6 +2,8 @@
 
 implied-vol-surface publishes one ticker's vol block as a file, not a
 Python object: ``{"vol": {"atm_iv_30d", "skew_25d", "term_slope", "iv_rank_1y"}}``
+(since 10 Nov 2026 also ``atm_tenor_days`` and ``term_slope_tenor_days``, P181,
+passed through but not required, so older contract files still load)
 (see that repo's ``volsurface.history.DailySummary.to_contract`` and its
 ``--contract`` CLI flag on ``python -m volsurface.history``). This module
 reads that file and attaches it to the one candidate in a ``schema/v1.json``

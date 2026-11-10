@@ -378,9 +378,12 @@ _FIELD_LABELS: dict[str, dict[str, tuple[str, str]]] = {
         "n_months": ("Months regressed", "text"),
     },
     "vol": {
-        "atm_iv_30d": ("ATM implied vol, 30-day", "pct"),
+        # P181: the fitted expiry nearest 30 days, not a constant-maturity 30-day IV.
+        "atm_iv_30d": ("ATM implied vol, fitted expiry nearest 30 days", "pct"),
+        "atm_tenor_days": ("Days to that expiry", "text"),
         "skew_25d": ("25-delta skew, put IV minus call IV, vol points", "pts"),
         "term_slope": ("Term slope, farthest minus nearest ATM IV, vol points", "pts"),
+        "term_slope_tenor_days": ("Term slope expiries, days (nearest, farthest)", "list"),
         "iv_rank_1y": ("IV rank, 1 year", "pct"),
     },
     "sentiment": {

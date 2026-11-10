@@ -70,6 +70,10 @@ def test_build_live_vol_section_against_the_real_sibling_checkout(tmp_path):
         else:
             assert data[key] == pytest.approx(expected[key], rel=1e-9), key
     assert data["iv_rank_1y"] == expected["iv_rank_1y"]
+    # P181: the tenors behind atm_iv_30d and term_slope pass through unchanged.
+    for key in ("atm_tenor_days", "term_slope_tenor_days"):
+        assert data.get(key) == expected.get(key), key
+    assert isinstance(data["atm_tenor_days"], int)
     assert 0.0 < data["atm_iv_30d"] < 2.0
 
     contract_path = tmp_path / "contracts" / "RELIANCE" / "vol.json"
