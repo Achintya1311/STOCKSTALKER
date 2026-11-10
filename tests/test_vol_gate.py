@@ -36,7 +36,9 @@ def screen(cfg):
 
 def test_load_contract_reads_the_real_implied_vol_surface_fixture():
     loaded = vol.load_contract(RELIANCE_CONTRACT)
-    assert set(loaded) == vol.REQUIRED_VOL_KEYS
+    # P181: the regenerated fixture also carries the tenors (optional keys).
+    assert set(loaded) == vol.REQUIRED_VOL_KEYS | {"atm_tenor_days", "term_slope_tenor_days"}
+    assert loaded["atm_tenor_days"] == 31 and loaded["term_slope_tenor_days"] == [4, 31]
     assert loaded["atm_iv_30d"] == pytest.approx(0.2801038061895711)
     # Honest gap, not a bug: no real trailing-year history exists yet
     # (see implied-vol-surface's README Limitations).
