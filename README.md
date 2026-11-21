@@ -2,6 +2,27 @@
 
 Educational research on historical data. Not investment advice. Not a SEBI-registered research analyst.
 
+**What it is:** one command that builds a research tear sheet for an NSE stock by reading six sibling research repos, plus a small daily screen tested honestly against random exposure.
+**What held up:** the tear sheet runs end to end on RELIANCE, CASTROLIND and GULFOILLUB. **What failed:** the screen beats random same-size exposure on only 1 of 3 names (Day 58), and its score does not survive the many-trials correction on 213 F&O stocks in [`stockstalker-lab`](https://github.com/Achintya1311/stockstalker-lab).
+
+```bash
+uv venv && source .venv/bin/activate && uv pip install -e . pytest
+python -m stockstalker.run --ticker GULFOILLUB --offline   # tear sheet from committed fixtures, no network
+```
+
+Excerpt from [`verification/tearsheets/tearsheet_RELIANCE_2026-10-26.md`](verification/tearsheets/tearsheet_RELIANCE_2026-10-26.md):
+
+> **Risk** (via monte-carlo-risk-lab): parametric 1-day VaR rejected at 99% by the Kupiec test (10/500 breaches vs 5.0 expected, p=0.0479), not rejected at 95%.
+> **Factor** (via fama-french-factor-model): alpha not significant (t = -0.19).
+
+**The six satellites it reads:** [reverse-dcf-engine](https://github.com/Achintya1311/reverse-dcf-engine) (valuation) · [three-statement-model](https://github.com/Achintya1311/three-statement-model) (fundamentals) · [monte-carlo-risk-lab](https://github.com/Achintya1311/monte-carlo-risk-lab) (risk) · [fama-french-factor-model](https://github.com/Achintya1311/fama-french-factor-model) (factor) · [implied-vol-surface](https://github.com/Achintya1311/implied-vol-surface) (options) · [headline-sentiment-vs-price](https://github.com/Achintya1311/headline-sentiment-vs-price) (sentiment).
+
+More: [full summary below](#in-full) · [section-by-section front door](docs/front-door.md) · [limitations](docs/limitations.md) · [findings](#findings).
+
+## In full
+
+Educational research on historical data. Not investment advice. Not a SEBI-registered research analyst.
+
 **Question:** does the daily trend/momentum/volume screen beat simply buying and holding, once realistic Indian delivery-equity trading costs are included?
 **Method:** a walk-forward long/flat backtest — long the next day only when yesterday's blended screen score clears 0.5, no shorting — over three NSE names (RELIANCE, TATACHEM, CROMPTON), 14 Nov 2024 to 4 Sep 2026 (450 tested days each), costed at 0.1% STT per side, 0.015% stamp duty on buys, and 10bps slippage.
 **Finding (Day 58, the honest one):** only 1 of 3 names beats being long this often, on these days, vs. being long the same number of days at random — down from "2 of 3 beat 100%-exposure buy-and-hold" (Day 7), and down to 1 of 3 vs. buy-and-hold once costs are included too (mean −17.75% vs. −23.72%, Day 8). That count is for the default 0.5 threshold: across five fixed thresholds it runs from 0 to 2 of 3 (R31). On the 25 days since the rule froze (as of 27 Oct 2026), 0 of the 2 names that were ever long beat random; on 41 days as of 10 Nov 2026, 2 of 3 do, one of them (CROMPTON) on the single day it was long (R29, P185; the segment grows daily, see Out of sample). Full tables in Findings below.
